@@ -107,14 +107,79 @@ const pageData = [
   },
 ];
 
-const brainstormingPrompts = [
-  "How might we help students decide in under two minutes whether a space matches their task?",
-  "What if the system showed the risk of going to a space instead of only whether it is empty?",
-  "How might we support different study modes—quiet, collaborative, and hybrid—without forcing the same interface on everyone?",
-  "What if students could compare spaces using mood, energy, and noise cues rather than only occupancy?",
-  "How might we turn campus uncertainty into a decision aid instead of another map or booking tool?",
-  "What if the app helped students choose based on time available, task type, and context instead of only location?",
-];
+function buildContextualFallbackPrompts(projectText: string): string[] {
+  const normalized = projectText.replace(/\s+/g, " ").trim();
+  const context = normalized.length > 180 ? `${normalized.slice(0, 180).trim()}…` : normalized;
+  const safeContext = context || "your project idea";
+
+  return [
+    `How might we reduce friction in the experience described by "${safeContext}"?`,
+    `What if we helped users feel more confident before making a decision in "${safeContext}"?`,
+    `How might we support different user needs and situations behind "${safeContext}" without adding complexity?`,
+    `What if the solution made the value visible earlier for users of "${safeContext}"?`,
+    `How might we turn the main pain point in "${safeContext}" into a more rewarding experience?`,
+    `What if the product adapted to user context, time, and preferences in "${safeContext}"?`,
+  ];
+}
+
+async function generateCustomBrainstormingPrompts(projectText: string): Promise<string[]> {
+  const fallback = buildContextualFallbackPrompts(projectText);
+  const trimmed = projectText.trim();
+  if (!trimmed) return fallback;
+
+  const googleApiKey =
+    import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
+  if (!googleApiKey) return fallback;
+
+  const model = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
+  const baseUrl =
+    import.meta.env.VITE_GEMINI_BASE_URL ||
+    "https://generativelanguage.googleapis.com/v1beta/models";
+
+  try {
+    const response = await fetch(`${baseUrl}/${model}:generateContent?key=${googleApiKey}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `You are a UX ideation coach. Based on this project context, generate exactly 6 short, practical brainstorming prompts for a user-centered design project. Use the project's context. Return only the prompts, one per line, no numbering, no explanations, no markdown.\n\nProject context:\n${trimmed}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 260,
+        },
+      }),
+    });
+
+    if (!response.ok) throw new Error(`AI request failed: ${response.status}`);
+
+    const data = await response.json();
+    const content =
+      data?.candidates?.[0]?.content?.parts
+        ?.map((part: { text?: string }) => part.text ?? "")
+        .join("\n") ?? "";
+
+    const prompts = content
+      .split(/\n+/)
+      .map((line) => line.replace(/^[-*•\d\s.]+/, "").trim())
+      .filter((line) => line.length > 12)
+      .slice(0, 6);
+
+    return prompts.length > 0 ? prompts : fallback;
+  } catch (error) {
+    console.warn("Google AI Studio brainstorming generation failed, using contextual fallback.", error);
+    return fallback;
+  }
+}
 
 const suggestionsByPhase: Suggestion[][] = [
   [
@@ -245,6 +310,11 @@ function App() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [saved, setSaved] = useState(true);
+  const [aiPrompts, setAiPrompts] = useState<string[]>(() =>
+    buildContextualFallbackPrompts(pageData[2].initial),
+  );
+  const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
+  const [aiStatus, setAiStatus] = useState<"ready" | "fallback" | "loading">("ready");
 
   useEffect(() => {
     setSaved(false);
@@ -272,6 +342,21 @@ function App() {
         return typeof value === "function" ? value(text) : value;
       }),
     );
+  }
+
+  async function generateBrainstormingPrompts() {
+    if (activePhase !== 2) return;
+    setIsGeneratingPrompts(true);
+    setAiStatus("loading");
+
+    const generated = await generateCustomBrainstormingPrompts(notebooks[2]);
+    setAiPrompts(generated);
+    setAiStatus(
+      import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
+        ? "ready"
+        : "fallback",
+    );
+    setIsGeneratingPrompts(false);
   }
 
   function insertBrainstormingPrompt(prompt: string) {
@@ -399,8 +484,8 @@ function App() {
                 >
                   <span
                     className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${index === activePhase
-                        ? "bg-[#dce9e2] text-[#3c705b]"
-                        : "border border-[#cfd0ca] text-[#777a74]"
+                      ? "bg-[#dce9e2] text-[#3c705b]"
+                      : "border border-[#cfd0ca] text-[#777a74]"
                       }`}
                   >
                     {index + 1}
@@ -487,10 +572,10 @@ function App() {
                           <div
                             key={phase}
                             className={`rounded-md px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.05em] sm:text-xs ${index === 0
-                                ? "bg-[#dfeaf0] text-[#365f78]"
-                                : index === 1
-                                  ? "bg-[#dcefe8] text-[#397160]"
-                                  : "bg-[#f4edc8] text-[#75682c]"
+                              ? "bg-[#dfeaf0] text-[#365f78]"
+                              : index === 1
+                                ? "bg-[#dcefe8] text-[#397160]"
+                                : "bg-[#f4edc8] text-[#75682c]"
                               }`}
                           >
                             {phase}
@@ -568,16 +653,29 @@ function App() {
                       <div className="flex size-9 items-center justify-center rounded-lg bg-[#f4e7bd] text-[#7d5e1d]">
                         <Lightbulb size={17} />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <h2 className="text-sm font-semibold">Brainstorming prompt bank</h2>
                         <p className="text-xs text-[#766a4c]">
                           Use these prompts to stretch your ideation before selecting a direction.
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={generateBrainstormingPrompts}
+                        disabled={isGeneratingPrompts}
+                        className="rounded-lg border border-[#d6bc72] bg-[#fffdf7] px-3 py-2 text-[11px] font-semibold text-[#6a5623] transition hover:bg-[#fffaf0] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isGeneratingPrompts ? "Generating…" : "Generate for this project"}
+                      </button>
+                    </div>
+
+                    <div className="mb-3 flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.08em] text-[#7a6b45]">
+                      <span>{aiStatus === "ready" ? "Google AI Studio connected" : aiStatus === "loading" ? "Generating custom prompts" : "Prototype fallback mode"}</span>
+                      <span>{import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY ? "AI" : "Local"}</span>
                     </div>
 
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {brainstormingPrompts.map((prompt) => (
+                      {aiPrompts.map((prompt) => (
                         <button
                           key={prompt}
                           type="button"
@@ -686,8 +784,8 @@ function App() {
                   <div key={phase.title} className="flex shrink-0 items-center gap-2">
                     <div
                       className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${index === 0
-                          ? "border-[#8eae9f] bg-[#e3eee8] text-[#3f715d]"
-                          : "border-[#d7d8d2] bg-white text-[#6c6f69]"
+                        ? "border-[#8eae9f] bg-[#e3eee8] text-[#3f715d]"
+                        : "border-[#d7d8d2] bg-white text-[#6c6f69]"
                         }`}
                     >
                       {String.fromCharCode(65 + index)}. {phase.title}
@@ -733,8 +831,8 @@ function App() {
                             setLibraryOpen(false);
                           }}
                           className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${phaseIndex === activePhase
-                              ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
-                              : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
+                            ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
+                            : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
                             }`}
                         >
                           {method}
