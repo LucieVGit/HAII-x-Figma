@@ -11,7 +11,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+For Windows
 
+```bash
+cd streamlit_app
+py -m venv .venv
+.venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+```
 The app reads the API key from the `.env` file at the repo root, which is shared with the React app.
 Any of these variable names work: `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `VITE_GEMINI_API_KEY`.
 When you deploy to Streamlit Community Cloud, put `GEMINI_API_KEY` in the app's **Secrets** instead.
@@ -23,6 +30,13 @@ The model can be changed with `GEMINI_MODEL`. It defaults to `gemini-3.8-flash`.
 ```bash
 cd streamlit_app
 source .venv/bin/activate
+streamlit run app.py
+```
+For Windows
+
+```bash
+cd streamlit_app
+.venv\Scripts\activate.bat
 streamlit run app.py
 ```
 
