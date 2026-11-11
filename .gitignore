@@ -3,6 +3,9 @@ dist/
 build/
 .cache/
 .env*
+.venv/
+__pycache__/
+.streamlit/secrets.toml
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
