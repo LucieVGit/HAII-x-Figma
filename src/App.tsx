@@ -98,13 +98,22 @@ const pageData = [
     title: "Turn insights into possibilities",
     description:
       "Develop opportunities and ideas from your research without judging them too early. The coach protects divergence, connects ideas to evidence, and identifies promising directions.",
-    notebookTitle: "Your idea space",
-    notebookHelp: "Build on other ideas, explore alternatives, and keep the user evidence visible.",
+    notebookTitle: "Brainstorming: your idea space",
+    notebookHelp: "Generate multiple ideas before filtering them. Keep the user evidence visible and build on what emerged from exploration.",
     initial:
-      "How might we help students judge whether a study space fits their immediate needs before they walk there?\n\nIdeas:\n• A confidence score based on how recent occupancy information is\n• Student check-ins that describe noise and atmosphere, not only seat count\n• Suggestions that adapt to time available and type of study session",
-    coachBasis: "Ideation methods 9–14",
-    why: "The book separates idea production from evaluation. The coach encourages quantity and variety first, while checking that ideas remain grounded in exploration data.",
+      "Brainstorming goal: help students quickly decide whether a campus space will fit their study need before walking there.\n\nEvidence from research:\n• Students lose time walking to unsuitable spaces\n• They want to know noise level, available seating, and nearby facilities\n• They sometimes trust the room less when the information feels outdated\n\nPossible directions:\n• A confidence score for each study space\n• A quick mood/atmosphere indicator based on student tags\n• A “best fit for my session” recommender based on time and task type\n• A visual map that separates quiet, collaborative, and hybrid spaces",
+    coachBasis: "Ideation method 9 · Brainstorming",
+    why: "The book treats brainstorming as a divergence activity: generate lots of options, defer judgment, combine ideas, and keep the problem framing anchored in user evidence.",
   },
+];
+
+const brainstormingPrompts = [
+  "How might we help students decide in under two minutes whether a space matches their task?",
+  "What if the system showed the risk of going to a space instead of only whether it is empty?",
+  "How might we support different study modes—quiet, collaborative, and hybrid—without forcing the same interface on everyone?",
+  "What if students could compare spaces using mood, energy, and noise cues rather than only occupancy?",
+  "How might we turn campus uncertainty into a decision aid instead of another map or booking tool?",
+  "What if the app helped students choose based on time available, task type, and context instead of only location?",
 ];
 
 const suggestionsByPhase: Suggestion[][] = [
@@ -176,29 +185,30 @@ const suggestionsByPhase: Suggestion[][] = [
       type: "add",
       importance: "high",
       label: "Starred idea",
-      text: "The confidence score combines occupancy and freshness of information. This direction connects strongly to the recurring trust problem in your exploration notes.",
+      text: "Your strongest direction is a trust-based availability concept: students need to know not just whether a space is free, but whether the information is recent and relevant to their current study need.",
       action: "Develop this direction",
       applyText:
-        "Promising direction — Trustworthy availability: show both the estimated occupancy and how recent or reliable the information is, so students can judge risk before walking.",
+        "Promising direction — Trustworthy availability: combine occupancy, freshness of data, and study-purpose fit so students can judge whether a space is worth walking to.",
     },
     {
       id: 22,
       type: "consider",
       importance: "medium",
       label: "Push further",
-      text: "Most ideas still assume a digital availability tool. Use brainstorming rules to deliberately generate alternatives that do not depend on live occupancy data.",
+      text: "Brainstorming should include alternatives that do not rely on live occupancy data alone, such as atmosphere tags, peer cues, or time-based recommendations.",
       action: "Add creative prompt",
-      applyText: "",
+      applyText:
+        "Creative prompt: generate at least two ideas that do not depend on sensors or live occupancy data. How else could students judge the right space for their session?",
     },
     {
       id: 23,
       type: "remove",
       importance: "low",
-      label: "Avoid judging yet",
-      text: "Do not select the final concept during divergence. Method 9 recommends producing and grouping ideas before evaluating them.",
+      label: "Keep divergence alive",
+      text: "Avoid narrowing too soon. Method 9 encourages quantity and combination before evaluation, so add more alternative directions before selecting one.",
       action: "Add ideation rule",
       applyText:
-        "Ideation rule: defer judgment, aim for variety, build on existing ideas, then group and evaluate only after divergence.",
+        "Ideation rule: defer judgment, generate at least five different directions, and cluster them by shared user need before selecting a concept.",
     },
   ],
 ];
@@ -262,6 +272,14 @@ function App() {
         return typeof value === "function" ? value(text) : value;
       }),
     );
+  }
+
+  function insertBrainstormingPrompt(prompt: string) {
+    setProjectText((text) => {
+      const block = `\n\nBrainstorming prompt: ${prompt}`;
+      if (text.includes(prompt)) return text;
+      return `${text}${block}`;
+    });
   }
 
   function changePhase(index: number) {
@@ -348,9 +366,8 @@ function App() {
           />
         )}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-[292px] border-r border-[#deded8] bg-[#f1f1ed] transition-transform lg:static lg:z-auto lg:min-h-[calc(100vh-68px)] lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={`fixed inset-y-0 left-0 z-40 w-[292px] border-r border-[#deded8] bg-[#f1f1ed] transition-transform lg:static lg:z-auto lg:min-h-[calc(100vh-68px)] lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
         >
           <div className="flex h-[68px] items-center justify-between border-b border-[#deded8] px-5 lg:hidden">
             <span className="font-semibold">Project guide</span>
@@ -377,16 +394,14 @@ function App() {
                 <button
                   key={phase.title}
                   onClick={() => changePhase(index)}
-                  className={`flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left ${
-                    index === activePhase ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)]" : ""
-                  }`}
+                  className={`flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left ${index === activePhase ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)]" : ""
+                    }`}
                 >
                   <span
-                    className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                      index === activePhase
+                    className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${index === activePhase
                         ? "bg-[#dce9e2] text-[#3c705b]"
                         : "border border-[#cfd0ca] text-[#777a74]"
-                    }`}
+                      }`}
                   >
                     {index + 1}
                   </span>
@@ -471,13 +486,12 @@ function App() {
                         {["A. Planning", "B. Exploration", "C. Ideation"].map((phase, index) => (
                           <div
                             key={phase}
-                            className={`rounded-md px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.05em] sm:text-xs ${
-                              index === 0
+                            className={`rounded-md px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.05em] sm:text-xs ${index === 0
                                 ? "bg-[#dfeaf0] text-[#365f78]"
                                 : index === 1
                                   ? "bg-[#dcefe8] text-[#397160]"
                                   : "bg-[#f4edc8] text-[#75682c]"
-                            }`}
+                              }`}
                           >
                             {phase}
                           </div>
@@ -487,9 +501,8 @@ function App() {
                   </div>
                 ) : (
                   <div
-                    className={`paper-card mb-6 ${
-                      activePhase === 1 ? "bg-[#f3faf7]" : "bg-[#fffaf0]"
-                    }`}
+                    className={`paper-card mb-6 ${activePhase === 1 ? "bg-[#f3faf7]" : "bg-[#fffaf0]"
+                      }`}
                   >
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
@@ -548,6 +561,35 @@ function App() {
                     </span>
                   </div>
                 </div>
+
+                {activePhase === 2 && (
+                  <div className="paper-card mb-6 bg-[#fffaf0]">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex size-9 items-center justify-center rounded-lg bg-[#f4e7bd] text-[#7d5e1d]">
+                        <Lightbulb size={17} />
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-semibold">Brainstorming prompt bank</h2>
+                        <p className="text-xs text-[#766a4c]">
+                          Use these prompts to stretch your ideation before selecting a direction.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {brainstormingPrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => insertBrainstormingPrompt(prompt)}
+                          className="rounded-xl border border-[#e7d8a2] bg-white/80 p-3 text-left text-xs leading-5 text-[#4d4d4a] transition hover:border-[#d5b96d] hover:bg-[#fffdf5]"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
 
@@ -643,11 +685,10 @@ function App() {
                 {phases.map((phase, index) => (
                   <div key={phase.title} className="flex shrink-0 items-center gap-2">
                     <div
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                        index === 0
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${index === 0
                           ? "border-[#8eae9f] bg-[#e3eee8] text-[#3f715d]"
                           : "border-[#d7d8d2] bg-white text-[#6c6f69]"
-                      }`}
+                        }`}
                     >
                       {String.fromCharCode(65 + index)}. {phase.title}
                     </div>
@@ -691,11 +732,10 @@ function App() {
                             changePhase(phaseIndex);
                             setLibraryOpen(false);
                           }}
-                          className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${
-                            phaseIndex === activePhase
+                          className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${phaseIndex === activePhase
                               ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
                               : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
-                          }`}
+                            }`}
                         >
                           {method}
                         </button>
@@ -827,9 +867,8 @@ function CoachPanel({
           return (
             <div
               key={suggestion.id}
-              className={`rounded-lg border border-[#deded7] border-l-[3px] p-4 ${
-                suggestion.importance === "high" ? "ring-1 ring-[#d5b163]/50" : ""
-              } ${typeStyles[suggestion.type].shell}`}
+              className={`rounded-lg border border-[#deded7] border-l-[3px] p-4 ${suggestion.importance === "high" ? "ring-1 ring-[#d5b163]/50" : ""
+                } ${typeStyles[suggestion.type].shell}`}
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
