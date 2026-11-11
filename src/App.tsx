@@ -75,8 +75,7 @@ const pageData = [
       "Write the project as you see it. The coach reads alongside you and suggests what to add, reconsider, or clarify using the book’s methodology.",
     notebookTitle: "Describe your project freely",
     notebookHelp: "Your words, your structure. There are no required sub-steps.",
-    initial:
-      "A mobile app that helps students find quiet places to study on campus. It would show available spaces nearby, how busy they are, and let students filter by things like noise level, opening hours, or available facilities.",
+    initial: "",
     coachBasis: "Planning methods 1a–3",
     why: "At this stage, the coach looks for a clear problem, stakeholders, assumptions, constraints, and signs of success before research begins.",
   },
@@ -88,8 +87,7 @@ const pageData = [
     notebookTitle: "Your exploration notes",
     notebookHelp:
       "Record evidence before interpreting it. Quotes and concrete behaviors are valuable.",
-    initial:
-      "Students often walk between several buildings before finding a place that feels suitable. Commuter students said they have less time to search, while group-project students prioritize tables and conversation over silence.\n\n“Sometimes a room looks free online, but when I arrive every seat is taken.”",
+    initial: "",
     coachBasis: "Exploration methods 4–8",
     why: "The book recommends triangulating what people say, do, and create. The coach distinguishes evidence from assumptions and highlights gaps in the sample or context.",
   },
@@ -100,8 +98,7 @@ const pageData = [
       "Develop opportunities and ideas from your research without judging them too early. The coach protects divergence, connects ideas to evidence, and identifies promising directions.",
     notebookTitle: "Brainstorming: your idea space",
     notebookHelp: "Generate multiple ideas before filtering them. Keep the user evidence visible and build on what emerged from exploration.",
-    initial:
-      "Brainstorming goal: help students quickly decide whether a campus space will fit their study need before walking there.\n\nEvidence from research:\n• Students lose time walking to unsuitable spaces\n• They want to know noise level, available seating, and nearby facilities\n• They sometimes trust the room less when the information feels outdated\n\nPossible directions:\n• A confidence score for each study space\n• A quick mood/atmosphere indicator based on student tags\n• A “best fit for my session” recommender based on time and task type\n• A visual map that separates quiet, collaborative, and hybrid spaces",
+    initial: "",
     coachBasis: "Ideation method 9 · Brainstorming",
     why: "The book treats brainstorming as a divergence activity: generate lots of options, defer judgment, combine ideas, and keep the problem framing anchored in user evidence.",
   },
@@ -109,6 +106,8 @@ const pageData = [
 
 function buildContextualFallbackPrompts(projectText: string): string[] {
   const normalized = projectText.replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+
   const context = normalized.length > 180 ? `${normalized.slice(0, 180).trim()}…` : normalized;
   const safeContext = context || "your project idea";
 
@@ -125,7 +124,7 @@ function buildContextualFallbackPrompts(projectText: string): string[] {
 async function generateCustomBrainstormingPrompts(projectText: string): Promise<string[]> {
   const fallback = buildContextualFallbackPrompts(projectText);
   const trimmed = projectText.trim();
-  if (!trimmed) return fallback;
+  if (!trimmed) return [];
 
   const googleApiKey =
     import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
@@ -191,14 +190,14 @@ const suggestionsByPhase: Suggestion[][] = [
       text: "Add measurable success criteria. Method 1a requires the team to agree on what will have improved when the mission is complete.",
       action: "Add success criteria",
       applyText:
-        "Success criteria: students can identify a suitable study space with confidence in under two minutes, and report fewer unsuccessful trips.",
+        "Success criteria: users can complete their intended task with less friction, and the team can measure whether the solution actually improves the experience.",
     },
     {
       id: 2,
       type: "consider",
       importance: "medium",
       label: "Important",
-      text: "Map the stakeholders who influence the project—not only students, but campus services, librarians, facilities teams, and decision-makers.",
+      text: "Map the stakeholders who influence the project and identify which groups shape the problem, the decision, or the adoption of the solution.",
       action: "Add comment",
       applyText: "",
     },
@@ -207,10 +206,10 @@ const suggestionsByPhase: Suggestion[][] = [
       type: "remove",
       importance: "low",
       label: "Worth refining",
-      text: "The description jumps directly to a mobile app. Method 1a asks you to align on the problem and objectives before committing to a solution.",
+      text: "The description jumps directly to a solution. Method 1a asks you to align on the problem and objectives before committing to a format.",
       action: "Reframe as hypothesis",
       applyText:
-        "Project hypothesis: Students sometimes struggle to identify a suitable place to study on campus. The solution format still needs to be validated through research.",
+        "Project hypothesis: People experience a meaningful friction when trying to complete this task, and the right solution format still needs to be validated through research.",
     },
   ],
   [
@@ -229,7 +228,7 @@ const suggestionsByPhase: Suggestion[][] = [
       type: "consider",
       importance: "medium",
       label: "Important",
-      text: "Commuter and group-project students may represent distinct patterns. Check whether this is supported across several participants before treating them as segments.",
+      text: "Different user groups may reveal distinct patterns. Check whether your evidence is consistent across several participants before treating them as segments.",
       action: "Add research note",
       applyText: "",
     },
@@ -250,20 +249,20 @@ const suggestionsByPhase: Suggestion[][] = [
       type: "add",
       importance: "high",
       label: "Starred idea",
-      text: "Your strongest direction is a trust-based availability concept: students need to know not just whether a space is free, but whether the information is recent and relevant to their current study need.",
+      text: "Your strongest direction may be a trusted, context-aware concept: people need to know not just if something is available, but whether it fits their timing, task, and situation.",
       action: "Develop this direction",
       applyText:
-        "Promising direction — Trustworthy availability: combine occupancy, freshness of data, and study-purpose fit so students can judge whether a space is worth walking to.",
+        "Promising direction — Trustworthy context: combine availability, relevance, and user intent so people can judge whether a choice makes sense for their current need.",
     },
     {
       id: 22,
       type: "consider",
       importance: "medium",
       label: "Push further",
-      text: "Brainstorming should include alternatives that do not rely on live occupancy data alone, such as atmosphere tags, peer cues, or time-based recommendations.",
+      text: "Brainstorming should include alternatives that do not rely on a single source of truth alone, such as preference cues, social signals, or context-based recommendations.",
       action: "Add creative prompt",
       applyText:
-        "Creative prompt: generate at least two ideas that do not depend on sensors or live occupancy data. How else could students judge the right space for their session?",
+        "Creative prompt: generate at least two ideas that do not depend on a single data source. How else could people judge the right option for their situation?",
     },
     {
       id: 23,
@@ -310,11 +309,25 @@ function App() {
   const [coachOpen, setCoachOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [saved, setSaved] = useState(true);
-  const [aiPrompts, setAiPrompts] = useState<string[]>(() =>
-    buildContextualFallbackPrompts(pageData[2].initial),
-  );
+  const [aiPrompts, setAiPrompts] = useState<string[]>([]);
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
   const [aiStatus, setAiStatus] = useState<"ready" | "fallback" | "loading">("ready");
+
+  useEffect(() => {
+    if (activePhase !== 2) return;
+
+    const timer = window.setTimeout(async () => {
+      const generated = await generateCustomBrainstormingPrompts(notebooks[2] || pageData[2].initial);
+      setAiPrompts(generated);
+      setAiStatus(
+        import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
+          ? "ready"
+          : "fallback",
+      );
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [activePhase, notebooks]);
 
   useEffect(() => {
     setSaved(false);
@@ -346,6 +359,14 @@ function App() {
 
   async function generateBrainstormingPrompts() {
     if (activePhase !== 2) return;
+
+    if (!notebooks[2].trim()) {
+      setAiPrompts([]);
+      setAiStatus("ready");
+      setIsGeneratingPrompts(false);
+      return;
+    }
+
     setIsGeneratingPrompts(true);
     setAiStatus("loading");
 
@@ -418,7 +439,7 @@ function App() {
             <span className="font-semibold tracking-[-0.02em]">method</span>
             <span className="hidden h-5 w-px bg-[#d8d8d1] sm:block" />
             <button className="hidden items-center gap-2 text-sm font-medium text-[#4b4d48] sm:flex">
-              Campus Study Spaces
+              Your project
               <ChevronDown size={15} />
             </button>
           </div>
@@ -635,7 +656,8 @@ function App() {
                   <textarea
                     value={projectText}
                     onChange={(event) => setProjectText(event.target.value)}
-                    className="min-h-[360px] w-full resize-y rounded-lg border border-[#d9dad4] bg-[#fcfcfa] p-5 text-[15px] leading-7 text-[#343632] outline-none transition focus:border-[#7fa18f] focus:ring-3 focus:ring-[#dce9e2]/70"
+                    placeholder="Write your own project idea, problem statement, user need, or opportunity here..."
+                    className="min-h-[360px] w-full resize-y rounded-lg border border-[#d9dad4] bg-[#fcfcfa] p-5 text-[15px] leading-7 text-[#343632] outline-none transition placeholder:text-[#9aa099] focus:border-[#7fa18f] focus:ring-3 focus:ring-[#dce9e2]/70"
                     aria-label="Project idea"
                   />
                   <div className="mt-3 flex items-center justify-between">
@@ -674,18 +696,24 @@ function App() {
                       <span>{import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY ? "AI" : "Local"}</span>
                     </div>
 
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {aiPrompts.map((prompt) => (
-                        <button
-                          key={prompt}
-                          type="button"
-                          onClick={() => insertBrainstormingPrompt(prompt)}
-                          className="rounded-xl border border-[#e7d8a2] bg-white/80 p-3 text-left text-xs leading-5 text-[#4d4d4a] transition hover:border-[#d5b96d] hover:bg-[#fffdf5]"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
+                    {aiPrompts.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-[#d8c57a] bg-[#fffdf7] p-4 text-sm leading-6 text-[#66582d]">
+                        Start by writing your own project context above. Once there is content to work from, the prompt bank will generate ideas tailored to your brief.
+                      </div>
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {aiPrompts.map((prompt) => (
+                          <button
+                            key={prompt}
+                            type="button"
+                            onClick={() => insertBrainstormingPrompt(prompt)}
+                            className="rounded-xl border border-[#e7d8a2] bg-white/80 p-3 text-left text-xs leading-5 text-[#4d4d4a] transition hover:border-[#d5b96d] hover:bg-[#fffdf5]"
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
