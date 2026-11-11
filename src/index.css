@@ -79,27 +79,6 @@
     font-size: 9px;
     font-weight: 700;
   }
-
-  .logo-mark {
-    display: grid;
-    width: 27px;
-    height: 27px;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2px;
-    padding: 4px;
-    border-radius: 7px;
-    background: #2e332f;
-  }
-
-  .logo-mark span {
-    border-radius: 2px;
-    background: #f2f2ed;
-  }
-
-  .logo-mark span:first-child {
-    grid-row: span 2;
-    background: #d8a84f;
-  }
 }
 
 @media (max-width: 640px) {

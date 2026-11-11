@@ -1,6 +1,9 @@
 {
-  "title": "Project HAII",
+  "title": "UXmethod",
   "description": "Guides beginner UX designers through structured brainstorming with tailored questions, AI suggestions, and color-coded feedback to support sound user-centered design.",
+  "icons": {
+    "icon": "/uxmethod-logo.png"
+  },
   "robots": {
     "index": false
   },
