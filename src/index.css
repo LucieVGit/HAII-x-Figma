@@ -1,0 +1,109 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "DM Serif Display", serif;
+}
+
+@layer base {
+  html {
+    background: #f7f7f4;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    font-family: "DM Sans", sans-serif;
+    color: #252724;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: #dce9e2;
+    color: #26332d;
+  }
+}
+
+@layer components {
+  .editorial-title {
+    font-family: "DM Serif Display", serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+  }
+
+  .paper-card {
+    border: 1px solid #deded8;
+    border-radius: 12px;
+    background: #fff;
+    padding: clamp(1.15rem, 3vw, 1.55rem);
+    box-shadow: 0 1px 2px rgb(31 36 31 / 3%);
+  }
+
+  .icon-button {
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #656862;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .icon-button:hover {
+    background: #ecece7;
+    color: #2d302c;
+  }
+
+  .avatar {
+    display: flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fbfbf9;
+    border-radius: 999px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .logo-mark {
+    display: grid;
+    width: 27px;
+    height: 27px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    padding: 4px;
+    border-radius: 7px;
+    background: #2e332f;
+  }
+
+  .logo-mark span {
+    border-radius: 2px;
+    background: #f2f2ed;
+  }
+
+  .logo-mark span:first-child {
+    grid-row: span 2;
+    background: #d8a84f;
+  }
+}
+
+@media (max-width: 640px) {
+  .paper-card {
+    border-radius: 10px;
+  }
+}

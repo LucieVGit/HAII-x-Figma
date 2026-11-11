@@ -1,0 +1,11 @@
+{
+  "title": "Project HAII",
+  "description": "Guides beginner UX designers through structured brainstorming with tailored questions, AI suggestions, and color-coded feedback to support sound user-centered design.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
