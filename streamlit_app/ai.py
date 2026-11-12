@@ -79,8 +79,8 @@ def generate_brainstorm_prompts(project_context: str) -> tuple[list[str], str, s
         return [], "error", "Add a Gemini API key in Streamlit secrets to generate prompts."
     prompt = (
         "You are a UX ideation coach. Use every piece of the full project context below, including "
-        "research notes and earlier decisions. Generate exactly 6 short, practical brainstorming "
-        "prompts specific to this project. Return only the prompts, one per line, no numbering, "
+        "research notes and earlier decisions. Generate exactly 6 short, practical ideas for how to "
+        "bring this project to life and open up directions for brainstorming. Return only the prompts, one per line, no numbering, "
         "no explanations, no markdown.\n\nFull project context:\n"
         f"{trimmed}"
     )

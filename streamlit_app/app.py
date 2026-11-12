@@ -251,6 +251,14 @@ def append_to_notebook(page: int, block: str) -> None:
     st.session_state.notebooks[page] = f"{current}\n\n{block}" if current.strip() else block
 
 
+def submit_brainstorming_idea() -> None:
+    idea = st.session_state.get("w_idea_draft", "").strip()
+    if not idea:
+        return
+    append_to_notebook(9, idea)
+    st.session_state.w_idea_draft = ""
+
+
 def accept_suggestion(page: int, suggestion: dict) -> None:
     phase = current_phase(page)
     if suggestion["applyText"]:
@@ -272,6 +280,14 @@ def full_project_context() -> str:
         f'{method["code"]} · {method["title"]}\n{st.session_state.notebooks[index].strip()}'
         for index, method in enumerate(METHODS)
         if st.session_state.notebooks[index].strip()
+    )
+
+
+def completed_project_context() -> str:
+    return "\n\n".join(
+        f'{method["code"]} · {method["title"]}\n{st.session_state.notebooks[index].strip()}'
+        for index, method in enumerate(METHODS)
+        if index != 9 and st.session_state.notebooks[index].strip()
     )
 
 
@@ -401,7 +417,7 @@ CSS = """
 .st-key-card-prompts [data-testid="stBaseButton-secondary"]:hover { border-color: #d5b96d; background: #fffdf5; color: #4d4d4a; }
 .prompt-empty { border: 1px dashed #d8c57a; border-radius: 12px; background: #fffdf7; padding: 16px; font-size: 14px; line-height: 1.6; color: #66582d; }
 .phase-number { width: 36px; height: 36px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:#dce9e2; color:#3c705b; font-weight:700; margin-bottom:12px; }
-.idea-map { position:relative; min-height:300px; border:1px solid #d8e2db; border-radius:12px; background:linear-gradient(to right, transparent 49.8%, #dce7df 50%, transparent 50.2%),linear-gradient(to bottom, transparent 49.8%, #dce7df 50%, transparent 50.2%),#f8fbf8; margin:12px 0 16px; }
+.idea-map { position:relative; min-height:480px; border:1px solid #d8e2db; border-radius:12px; background:linear-gradient(to right, transparent 49.8%, #dce7df 50%, transparent 50.2%),linear-gradient(to bottom, transparent 49.8%, #dce7df 50%, transparent 50.2%),#f8fbf8; margin:12px 0 16px; }
 .idea-point { position:absolute; transform:translate(-50%,-50%); width:36px; height:36px; display:flex; align-items:center; justify-content:center; border:2px solid white; border-radius:999px; background:#4d846f; color:white; font-size:12px; font-weight:700; box-shadow:0 2px 6px rgba(0,0,0,.15); }
 .map-label,.map-axis { position:absolute; color:#829189; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
 .map-label { left:12px; top:10px; }.map-axis { right:12px; bottom:10px; }
@@ -647,21 +663,31 @@ def render_idea_landscape() -> None:
 def render_notebook(page_index: int) -> None:
     page = METHODS[page_index]
     widget_key = f"w_nb_{page_index}"
-    st.session_state[widget_key] = st.session_state.notebooks[page_index]
     with st.container(key="card-notebook"):
         st.markdown(
             f'<p class="card-title">💡 {page["notebook_title"]}</p><p class="card-help">{page["notebook_help"]}</p>',
             unsafe_allow_html=True,
         )
-        st.text_area(
-            page["notebook_title"],
-            key=widget_key,
-            height=120 if page["code"] == "9" else 360,
-            placeholder="Write your ideas here, one per line…" if page["code"] == "9" else "Write your notes here…",
-            label_visibility="collapsed",
-            on_change=sync_notebook,
-            args=(page_index,),
-        )
+        if page["code"] == "9":
+            st.text_input(
+                page["notebook_title"],
+                key="w_idea_draft",
+                placeholder="Write one short idea, then press Enter…",
+                label_visibility="collapsed",
+                on_change=submit_brainstorming_idea,
+            )
+            st.caption("Press Enter after each idea. It will be saved below and the input will clear.")
+        else:
+            st.session_state[widget_key] = st.session_state.notebooks[page_index]
+            st.text_area(
+                page["notebook_title"],
+                key=widget_key,
+                height=360,
+                placeholder="Write your notes here…",
+                label_visibility="collapsed",
+                on_change=sync_notebook,
+                args=(page_index,),
+            )
         st.markdown(
             f'<div style="display:flex;justify-content:space-between;font-size:12px">'
             f'<span style="color:#969892">{len(st.session_state.notebooks[page_index])} characters</span>'
@@ -671,6 +697,14 @@ def render_notebook(page_index: int) -> None:
 
 
 def render_prompt_bank() -> None:
+    context = completed_project_context()
+    signature = context
+    if context and st.session_state.get("prompt_context_signature") != signature:
+        with st.spinner("Gemini is finding ways to bring this project to life…"):
+            prompts, kind, message = generate_brainstorm_prompts(context)
+        st.session_state.ai_prompts = prompts
+        st.session_state.prompt_status = (kind, message)
+        st.session_state.prompt_context_signature = signature
     with st.container(key="card-prompts"):
         head, action = st.columns([3, 1.4])
         head.markdown(
@@ -693,8 +727,8 @@ def render_prompt_bank() -> None:
         prompts = st.session_state.ai_prompts
         if not prompts:
             st.markdown(
-                '<div class="prompt-empty">Start by writing your own project context above, then click '
-                "<b>Generate for this project</b>. The prompt bank will generate ideas tailored to your brief.</div>",
+                '<div class="prompt-empty">Complete any earlier project section and Gemini will suggest '
+                "ways to bring your project to life here.</div>",
                 unsafe_allow_html=True,
             )
             return
@@ -854,14 +888,7 @@ def main() -> None:
             )
             render_notebook(page_index)
             if method["code"] == "9":
-                prompt_col, context_col = st.columns([3, 1.4])
-                with prompt_col:
-                    render_prompt_bank()
-                with context_col:
-                    st.markdown(
-                        '<div class="prompt-empty"><b>Context-aware coach</b><br>Gemini reads notes from every method, not just this page.</div>',
-                        unsafe_allow_html=True,
-                    )
+                render_prompt_bank()
                 render_idea_landscape()
         with coach_col:
             open_library |= render_coach(phase, page_index)
