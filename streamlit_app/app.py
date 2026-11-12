@@ -212,6 +212,8 @@ DEFAULT_SUGGESTIONS = [
 def init_state() -> None:
     ss = st.session_state
     ss.setdefault("page", -1)
+    ss.setdefault("project_name", "")
+    ss.setdefault("project_name_input", ss.project_name)
     if len(ss.get("notebooks", [])) != len(METHODS):
         legacy = ss.get("notebooks", ["", "", ""])
         ss.notebooks = [
@@ -257,6 +259,10 @@ def submit_brainstorming_idea() -> None:
         return
     append_to_notebook(9, idea)
     st.session_state.w_idea_draft = ""
+
+
+def sync_project_name() -> None:
+    st.session_state.project_name = st.session_state.project_name_input.strip()
 
 
 def accept_suggestion(page: int, suggestion: dict) -> None:
@@ -613,9 +619,10 @@ def render_overview() -> None:
         st.markdown('<p class="micro">Name your project</p>', unsafe_allow_html=True)
         st.text_input(
             "Project name",
-            key="project_name",
+            key="project_name_input",
             placeholder="e.g. A better way to find study spaces",
             label_visibility="collapsed",
+            on_change=sync_project_name,
         )
         st.caption("This name is saved for this browser session and appears in the header.")
     st.markdown('<div class="micro" style="margin-top:24px">Your three-part journey</div><h2 style="margin-top:4px">Choose where to begin</h2>', unsafe_allow_html=True)
