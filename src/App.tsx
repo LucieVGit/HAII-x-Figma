@@ -67,41 +67,145 @@ const phases = [
   },
 ];
 
-const pageData = [
+const phaseCoachWhy = [
+  "Planning suggestions look for clear objectives, assumptions, stakeholders, constraints, ethical safeguards, and a research approach appropriate to the project.",
+  "Exploration suggestions help separate evidence from interpretation, improve research quality, and reveal gaps across what people say, do, and create.",
+  "Ideation suggestions keep ideas grounded in research while encouraging variety, collaboration, synthesis, and deferred judgment.",
+];
+
+const methodPages = [
   {
-    eyebrow: "Your project · Planning",
-    title: "Your project notebook",
-    description:
-      "Write the project as you see it. The coach reads alongside you and suggests what to add, reconsider, or clarify using the book’s methodology.",
-    notebookTitle: "Describe your project freely",
-    notebookHelp: "Your words, your structure. There are no required sub-steps.",
-    initial: "",
-    coachBasis: "Planning methods 1a–3",
-    why: "At this stage, the coach looks for a clear problem, stakeholders, assumptions, constraints, and signs of success before research begins.",
+    phaseIndex: 0,
+    code: "1a",
+    title: "Project definition",
+    description: "Frame the request, objectives, stakeholders, constraints, and signs of success.",
+    notebookTitle: "Define your project",
+    notebookHelp: "Describe the problem and intended outcome before committing to a solution.",
   },
   {
-    eyebrow: "Your project · Exploration",
-    title: "Capture what you learn",
-    description:
-      "Write down observations, interview notes, quotes, contradictions, and emerging patterns. Keep the evidence in your own words—the coach helps you notice what may be missing.",
-    notebookTitle: "Your exploration notes",
+    phaseIndex: 0,
+    code: "1b",
+    title: "Secondary research",
+    description: "Review existing knowledge, comparable services, trends, and internal resources.",
+    notebookTitle: "Document what is already known",
+    notebookHelp: "Capture useful sources, findings, competitors, and unanswered questions.",
+  },
+  {
+    phaseIndex: 0,
+    code: "2",
+    title: "User recruitment",
+    description: "Define who should participate and how you will reach a relevant, ethical sample.",
+    notebookTitle: "Plan your recruitment",
     notebookHelp:
-      "Record evidence before interpreting it. Quotes and concrete behaviors are valuable.",
-    initial: "",
-    coachBasis: "Exploration methods 4–8",
-    why: "The book recommends triangulating what people say, do, and create. The coach distinguishes evidence from assumptions and highlights gaps in the sample or context.",
+      "Describe participant criteria, exclusions, channels, incentives, and target numbers.",
   },
   {
-    eyebrow: "Your project · Ideation",
-    title: "Turn insights into possibilities",
+    phaseIndex: 0,
+    code: "3",
+    title: "Ethics & deontology",
     description:
-      "Develop opportunities and ideas from your research without judging them too early. The coach protects divergence, connects ideas to evidence, and identifies promising directions.",
+      "Protect participants through consent, privacy, transparency, and responsible data use.",
+    notebookTitle: "Record your ethical safeguards",
+    notebookHelp: "Note consent, sensitive topics, data handling, risks, and participant rights.",
+  },
+  {
+    phaseIndex: 1,
+    code: "4",
+    title: "Interviews",
+    description: "Explore experiences, motivations, needs, and language through open conversation.",
+    notebookTitle: "Interview notes",
+    notebookHelp: "Keep questions, quotes, context, surprises, and follow-up points together.",
+  },
+  {
+    phaseIndex: 1,
+    code: "5",
+    title: "Focus groups",
+    description: "Use group discussion to reveal shared views, disagreements, and social dynamics.",
+    notebookTitle: "Focus group notes",
+    notebookHelp:
+      "Capture themes, contrasting opinions, group effects, and notable participant quotes.",
+  },
+  {
+    phaseIndex: 1,
+    code: "6",
+    title: "Observation",
+    description:
+      "Study what people actually do in context, including workarounds and environmental cues.",
+    notebookTitle: "Observation log",
+    notebookHelp:
+      "Record behavior, place, time, triggers, obstacles, and your interpretation separately.",
+  },
+  {
+    phaseIndex: 1,
+    code: "7",
+    title: "Exploratory survey",
+    description: "Collect broader self-reported patterns to complement qualitative exploration.",
+    notebookTitle: "Survey plan and findings",
+    notebookHelp: "Draft objectives and questions, then record response patterns and limitations.",
+  },
+  {
+    phaseIndex: 1,
+    code: "8",
+    title: "Cultural probes",
+    description: "Invite participants to document and express parts of their everyday experience.",
+    notebookTitle: "Cultural probe plan",
+    notebookHelp:
+      "Describe activities, materials, participant instructions, returns, and inspirations.",
+  },
+  {
+    phaseIndex: 2,
+    code: "9",
+    title: "Brainstorming",
+    description: "Generate many varied ideas, defer judgment, and build on the thinking of others.",
     notebookTitle: "Brainstorming: your idea space",
+    notebookHelp: "Generate broadly before filtering. Keep user evidence visible as you work.",
+  },
+  {
+    phaseIndex: 2,
+    code: "10",
+    title: "Ideation cards",
+    description: "Use structured prompts and design principles to provoke new solution directions.",
+    notebookTitle: "Ideas from the cards",
+    notebookHelp: "Record each prompt, the idea it triggered, and its link to user evidence.",
+  },
+  {
+    phaseIndex: 2,
+    code: "11",
+    title: "Design studio",
+    description:
+      "Sketch, share, critique, and combine ideas collaboratively around a shared brief.",
+    notebookTitle: "Design studio workspace",
     notebookHelp:
-      "Generate multiple ideas before filtering them. Keep the user evidence visible and build on what emerged from exploration.",
-    initial: "",
-    coachBasis: "Ideation method 9 · Brainstorming",
-    why: "The book treats brainstorming as a divergence activity: generate lots of options, defer judgment, combine ideas, and keep the problem framing anchored in user evidence.",
+      "Capture the brief, individual concepts, critique notes, and combined directions.",
+  },
+  {
+    phaseIndex: 2,
+    code: "12",
+    title: "Experience maps",
+    description:
+      "Synthesize the user journey to reveal pain points, emotions, and design opportunities.",
+    notebookTitle: "Map the experience",
+    notebookHelp:
+      "List stages, actions, thoughts, emotions, evidence, pain points, and opportunities.",
+  },
+  {
+    phaseIndex: 2,
+    code: "13",
+    title: "Personas",
+    description:
+      "Create evidence-based user profiles that keep important behavioral patterns visible.",
+    notebookTitle: "Persona evidence",
+    notebookHelp:
+      "Describe goals, behaviors, contexts, needs, and the research supporting each pattern.",
+  },
+  {
+    phaseIndex: 2,
+    code: "14",
+    title: "Generative techniques",
+    description: "Help users express tacit needs and imagine futures through creative activities.",
+    notebookTitle: "Generative session notes",
+    notebookHelp:
+      "Plan the activity and capture artifacts, stories, interpretations, and emerging ideas.",
   },
 ];
 
@@ -296,11 +400,20 @@ const typeStyles: Record<SuggestionType, { shell: string; badge: string }> = {
 };
 
 function App() {
-  const [activePhase, setActivePhase] = useState(0);
+  const [activeMethod, setActiveMethod] = useState(0);
+  const [expandedPhases, setExpandedPhases] = useState([true, true, true]);
   const [notebooks, setNotebooks] = useState<string[]>(() => {
-    return pageData.map((page, index) => {
-      const legacyPlanning = index === 0 ? localStorage.getItem("method-project-text") : null;
-      return localStorage.getItem(`method-notebook-${index}`) || legacyPlanning || page.initial;
+    return methodPages.map((method, index) => {
+      const firstInPhase = methodPages.findIndex((item) => item.phaseIndex === method.phaseIndex);
+      const legacyPhase =
+        index === firstInPhase
+          ? localStorage.getItem(`method-notebook-${method.phaseIndex}`)
+          : null;
+      const legacyPlanning =
+        method.code === "1a" ? localStorage.getItem("method-project-text") : null;
+      return (
+        localStorage.getItem(`method-page-${method.code}`) || legacyPhase || legacyPlanning || ""
+      );
     });
   });
   const [visibleSuggestions, setVisibleSuggestions] = useState(suggestionsByPhase[0]);
@@ -316,13 +429,15 @@ function App() {
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
   const [aiStatus, setAiStatus] = useState<"ready" | "fallback" | "loading">("ready");
 
+  const page = methodPages[activeMethod];
+  const activePhase = page.phaseIndex;
+  const projectText = notebooks[activeMethod];
+
   useEffect(() => {
-    if (activePhase !== 2) return;
+    if (page.code !== "9") return;
 
     const timer = window.setTimeout(async () => {
-      const generated = await generateCustomBrainstormingPrompts(
-        notebooks[2] || pageData[2].initial,
-      );
+      const generated = await generateCustomBrainstormingPrompts(notebooks[activeMethod]);
       setAiPrompts(generated);
       setAiStatus(
         import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
@@ -332,13 +447,13 @@ function App() {
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [activePhase, notebooks]);
+  }, [activeMethod, notebooks, page.code]);
 
   useEffect(() => {
     setSaved(false);
     const timer = window.setTimeout(() => {
       notebooks.forEach((text, index) => {
-        localStorage.setItem(`method-notebook-${index}`, text);
+        localStorage.setItem(`method-page-${methodPages[index].code}`, text);
       });
       setSaved(true);
     }, 450);
@@ -346,26 +461,23 @@ function App() {
   }, [notebooks]);
 
   const overallProgress = useMemo(() => {
-    const phaseProgress = Math.min(34, Math.max(8, Math.round(notebooks[activePhase].length / 22)));
-    return Math.min(100, activePhase * 33 + phaseProgress);
-  }, [activePhase, notebooks]);
-
-  const page = pageData[activePhase];
-  const projectText = notebooks[activePhase];
+    const started = notebooks.filter((text) => text.trim().length > 0).length;
+    return Math.round((started / methodPages.length) * 100);
+  }, [notebooks]);
 
   function setProjectText(value: string | ((text: string) => string)) {
     setNotebooks((current) =>
       current.map((text, index) => {
-        if (index !== activePhase) return text;
+        if (index !== activeMethod) return text;
         return typeof value === "function" ? value(text) : value;
       }),
     );
   }
 
   async function generateBrainstormingPrompts() {
-    if (activePhase !== 2) return;
+    if (page.code !== "9") return;
 
-    if (!notebooks[2].trim()) {
+    if (!projectText.trim()) {
       setAiPrompts([]);
       setAiStatus("ready");
       setIsGeneratingPrompts(false);
@@ -375,7 +487,7 @@ function App() {
     setIsGeneratingPrompts(true);
     setAiStatus("loading");
 
-    const generated = await generateCustomBrainstormingPrompts(notebooks[2]);
+    const generated = await generateCustomBrainstormingPrompts(projectText);
     setAiPrompts(generated);
     setAiStatus(
       import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
@@ -393,14 +505,21 @@ function App() {
     });
   }
 
-  function changePhase(index: number) {
-    setActivePhase(index);
-    setVisibleSuggestions(suggestionsByPhase[index]);
+  function navigateToMethod(index: number) {
+    const nextMethod = methodPages[index];
+    setActiveMethod(index);
+    setVisibleSuggestions(suggestionsByPhase[nextMethod.phaseIndex]);
     setAccepted([]);
     setComment("");
     setCommentSaved(false);
     setShowComment(false);
     setSidebarOpen(false);
+  }
+
+  function togglePhase(index: number) {
+    setExpandedPhases((current) =>
+      current.map((expanded, phaseIndex) => (phaseIndex === index ? !expanded : expanded)),
+    );
   }
 
   function acceptSuggestion(suggestion: Suggestion) {
@@ -498,34 +617,71 @@ function App() {
             </div>
 
             <nav className="flex-1 space-y-1 overflow-y-auto">
-              {phases.map((phase, index) => (
-                <button
-                  key={phase.title}
-                  onClick={() => changePhase(index)}
-                  className={`flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left ${
-                    index === activePhase ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)]" : ""
-                  }`}
-                >
-                  <span
-                    className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                      index === activePhase
-                        ? "bg-[#dce9e2] text-[#3c705b]"
-                        : "border border-[#cfd0ca] text-[#777a74]"
-                    }`}
-                  >
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold">{phase.title}</span>
-                    <span className="block text-xs text-[#777a74]">{phase.subtitle}</span>
-                  </span>
-                  {index <= activePhase ? (
-                    <CheckCircle2 size={16} className="mt-1 text-[#4d846f]" />
-                  ) : (
-                    <Circle size={15} className="mt-1 text-[#a3a59f]" />
-                  )}
-                </button>
-              ))}
+              {phases.map((phase, phaseIndex) => {
+                const methods = methodPages
+                  .map((method, methodIndex) => ({ ...method, methodIndex }))
+                  .filter((method) => method.phaseIndex === phaseIndex);
+                return (
+                  <div key={phase.title}>
+                    <button
+                      onClick={() => togglePhase(phaseIndex)}
+                      className={`flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left ${
+                        phaseIndex === activePhase
+                          ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)]"
+                          : ""
+                      }`}
+                    >
+                      <span
+                        className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                          phaseIndex === activePhase
+                            ? "bg-[#dce9e2] text-[#3c705b]"
+                            : "border border-[#cfd0ca] text-[#777a74]"
+                        }`}
+                      >
+                        {phaseIndex + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{phase.title}</span>
+                        <span className="block text-xs text-[#777a74]">{phase.subtitle}</span>
+                      </span>
+                      {expandedPhases[phaseIndex] ? (
+                        <ChevronDown size={15} className="mt-1.5 text-[#777a74]" />
+                      ) : (
+                        <ChevronRight size={15} className="mt-1.5 text-[#9a9c96]" />
+                      )}
+                    </button>
+
+                    {expandedPhases[phaseIndex] && (
+                      <div className="ml-5 border-l border-[#d5d6d0] py-1.5 pl-4">
+                        {methods.map((method) => {
+                          const isActive = method.methodIndex === activeMethod;
+                          const hasContent = notebooks[method.methodIndex].trim().length > 0;
+                          return (
+                            <button
+                              key={method.code}
+                              onClick={() => navigateToMethod(method.methodIndex)}
+                              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] transition ${
+                                isActive
+                                  ? "bg-[#e4ede8] font-semibold text-[#376e59]"
+                                  : "text-[#666963] hover:bg-white/70"
+                              }`}
+                            >
+                              {hasContent ? (
+                                <CheckCircle2 size={14} className="shrink-0 text-[#5c8a76]" />
+                              ) : (
+                                <Circle size={13} className="shrink-0 text-[#a3a59f]" />
+                              )}
+                              <span className="truncate">
+                                {method.code} · {method.title}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </nav>
 
             <div className="mt-5 border-t border-[#d8d9d3] pt-4">
@@ -551,7 +707,7 @@ function App() {
                 <div className="mb-9">
                   <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#4d846f]">
                     <span className="h-px w-5 bg-[#4d846f]" />
-                    {page.eyebrow}
+                    {phases[activePhase].title} · Method {page.code}
                   </div>
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -566,7 +722,7 @@ function App() {
                   </div>
                 </div>
 
-                {activePhase === 0 ? (
+                {activeMethod === 0 ? (
                   <div className="paper-card mb-6 overflow-hidden p-0">
                     <div className="flex flex-col gap-3 border-b border-[#e2e2dc] bg-[#f3f7f4] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
@@ -619,32 +775,34 @@ function App() {
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#858880]">
-                          Methods available in this phase
+                          Method {page.code} · {phases[activePhase].title}
                         </div>
-                        <h2 className="mt-1 text-base font-semibold">
-                          {activePhase === 1
-                            ? "Listen, observe, and gather evidence"
-                            : "Diverge, connect, and develop possibilities"}
-                        </h2>
+                        <h2 className="mt-1 text-base font-semibold">{page.title}</h2>
                       </div>
                       <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#696c66]">
-                        {phases[activePhase].steps.length} methods
+                        Page {activeMethod + 1} of {methodPages.length}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {phases[activePhase].steps.map((method) => (
-                        <span
-                          key={method}
-                          className="rounded-md border border-[#deded7] bg-white px-2.5 py-1.5 text-[11px] font-medium text-[#5c605a]"
-                        >
-                          {method}
-                        </span>
-                      ))}
+                      {methodPages
+                        .map((method, methodIndex) => ({ ...method, methodIndex }))
+                        .filter((method) => method.phaseIndex === activePhase)
+                        .map((method) => (
+                          <button
+                            key={method.code}
+                            onClick={() => navigateToMethod(method.methodIndex)}
+                            className={`rounded-md border px-2.5 py-1.5 text-[11px] font-medium ${
+                              method.methodIndex === activeMethod
+                                ? "border-[#91ad9f] bg-[#e2ece7] text-[#386b56]"
+                                : "border-[#deded7] bg-white text-[#5c605a]"
+                            }`}
+                          >
+                            {method.code} · {method.title}
+                          </button>
+                        ))}
                     </div>
                     <p className="mt-4 border-t border-[#deded8] pt-3 text-xs leading-5 text-[#72756e]">
-                      {activePhase === 1
-                        ? "Use several methods when possible: interviews reveal what people say, observation shows what they do, and cultural probes reveal what they create."
-                        : "Ideas should build on exploration evidence. Produce broadly before grouping, developing, and eventually selecting directions."}
+                      {page.description}
                     </p>
                   </div>
                 )}
@@ -662,7 +820,7 @@ function App() {
                   <textarea
                     value={projectText}
                     onChange={(event) => setProjectText(event.target.value)}
-                    placeholder="Write your own project idea, problem statement, user need, or opportunity here..."
+                    placeholder={`Write your ${page.title.toLowerCase()} notes here…`}
                     className="min-h-[360px] w-full resize-y rounded-lg border border-[#d9dad4] bg-[#fcfcfa] p-5 text-[15px] leading-7 text-[#343632] outline-none transition placeholder:text-[#9aa099] focus:border-[#7fa18f] focus:ring-3 focus:ring-[#dce9e2]/70"
                     aria-label="Project idea"
                   />
@@ -675,7 +833,7 @@ function App() {
                   </div>
                 </div>
 
-                {activePhase === 2 && (
+                {page.code === "9" && (
                   <div className="paper-card mb-6 bg-[#fffaf0]">
                     <div className="mb-4 flex items-center gap-3">
                       <div className="flex size-9 items-center justify-center rounded-lg bg-[#f4e7bd] text-[#7d5e1d]">
@@ -744,8 +902,8 @@ function App() {
                 onDismiss={dismissSuggestion}
                 comment={comment}
                 onOpenMethod={() => setLibraryOpen(true)}
-                coachBasis={page.coachBasis}
-                why={page.why}
+                coachBasis={`${phases[activePhase].title} · Method ${page.code}`}
+                why={phaseCoachWhy[activePhase]}
                 phaseLabel={phases[activePhase].title}
               />
             </aside>
@@ -785,8 +943,8 @@ function App() {
               onDismiss={dismissSuggestion}
               comment={comment}
               onOpenMethod={() => setLibraryOpen(true)}
-              coachBasis={page.coachBasis}
-              why={page.why}
+              coachBasis={`${phases[activePhase].title} · Method ${page.code}`}
+              why={phaseCoachWhy[activePhase]}
               phaseLabel={phases[activePhase].title}
             />
           </div>
@@ -869,22 +1027,25 @@ function App() {
                       </span>
                     </div>
                     <div className="space-y-1.5">
-                      {phase.steps.map((method) => (
-                        <button
-                          key={method}
-                          onClick={() => {
-                            changePhase(phaseIndex);
-                            setLibraryOpen(false);
-                          }}
-                          className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${
-                            phaseIndex === activePhase
-                              ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
-                              : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
-                          }`}
-                        >
-                          {method}
-                        </button>
-                      ))}
+                      {methodPages
+                        .map((method, methodIndex) => ({ ...method, methodIndex }))
+                        .filter((method) => method.phaseIndex === phaseIndex)
+                        .map((method) => (
+                          <button
+                            key={method.code}
+                            onClick={() => {
+                              navigateToMethod(method.methodIndex);
+                              setLibraryOpen(false);
+                            }}
+                            className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${
+                              method.methodIndex === activeMethod
+                                ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
+                                : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
+                            }`}
+                          >
+                            {method.code} · {method.title}
+                          </button>
+                        ))}
                     </div>
                   </section>
                 ))}
