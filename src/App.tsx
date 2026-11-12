@@ -97,7 +97,8 @@ const pageData = [
     description:
       "Develop opportunities and ideas from your research without judging them too early. The coach protects divergence, connects ideas to evidence, and identifies promising directions.",
     notebookTitle: "Brainstorming: your idea space",
-    notebookHelp: "Generate multiple ideas before filtering them. Keep the user evidence visible and build on what emerged from exploration.",
+    notebookHelp:
+      "Generate multiple ideas before filtering them. Keep the user evidence visible and build on what emerged from exploration.",
     initial: "",
     coachBasis: "Ideation method 9 · Brainstorming",
     why: "The book treats brainstorming as a divergence activity: generate lots of options, defer judgment, combine ideas, and keep the problem framing anchored in user evidence.",
@@ -126,8 +127,7 @@ async function generateCustomBrainstormingPrompts(projectText: string): Promise<
   const trimmed = projectText.trim();
   if (!trimmed) return [];
 
-  const googleApiKey =
-    import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
+  const googleApiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
   if (!googleApiKey) return fallback;
 
   const model = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
@@ -175,7 +175,10 @@ async function generateCustomBrainstormingPrompts(projectText: string): Promise<
 
     return prompts.length > 0 ? prompts : fallback;
   } catch (error) {
-    console.warn("Google AI Studio brainstorming generation failed, using contextual fallback.", error);
+    console.warn(
+      "Google AI Studio brainstorming generation failed, using contextual fallback.",
+      error,
+    );
     return fallback;
   }
 }
@@ -317,7 +320,9 @@ function App() {
     if (activePhase !== 2) return;
 
     const timer = window.setTimeout(async () => {
-      const generated = await generateCustomBrainstormingPrompts(notebooks[2] || pageData[2].initial);
+      const generated = await generateCustomBrainstormingPrompts(
+        notebooks[2] || pageData[2].initial,
+      );
       setAiPrompts(generated);
       setAiStatus(
         import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
@@ -431,12 +436,8 @@ function App() {
             >
               <Menu size={19} />
             </button>
-            <div className="logo-mark">
-              <span />
-              <span />
-              <span />
-            </div>
-            <span className="font-semibold tracking-[-0.02em]">method</span>
+            <img src="/uxmethod-logo.png" alt="UXmethod" className="h-9 w-[58px] object-contain" />
+            <span className="font-semibold tracking-[-0.03em]">UXmethod</span>
             <span className="hidden h-5 w-px bg-[#d8d8d1] sm:block" />
             <button className="hidden items-center gap-2 text-sm font-medium text-[#4b4d48] sm:flex">
               Your project
@@ -472,8 +473,9 @@ function App() {
           />
         )}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-[292px] border-r border-[#deded8] bg-[#f1f1ed] transition-transform lg:static lg:z-auto lg:min-h-[calc(100vh-68px)] lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-            }`}
+          className={`fixed inset-y-0 left-0 z-40 w-[292px] border-r border-[#deded8] bg-[#f1f1ed] transition-transform lg:static lg:z-auto lg:min-h-[calc(100vh-68px)] lg:translate-x-0 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
         >
           <div className="flex h-[68px] items-center justify-between border-b border-[#deded8] px-5 lg:hidden">
             <span className="font-semibold">Project guide</span>
@@ -500,14 +502,16 @@ function App() {
                 <button
                   key={phase.title}
                   onClick={() => changePhase(index)}
-                  className={`flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left ${index === activePhase ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)]" : ""
-                    }`}
+                  className={`flex w-full items-start gap-3 rounded-lg px-2 py-3 text-left ${
+                    index === activePhase ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,.04)]" : ""
+                  }`}
                 >
                   <span
-                    className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${index === activePhase
-                      ? "bg-[#dce9e2] text-[#3c705b]"
-                      : "border border-[#cfd0ca] text-[#777a74]"
-                      }`}
+                    className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                      index === activePhase
+                        ? "bg-[#dce9e2] text-[#3c705b]"
+                        : "border border-[#cfd0ca] text-[#777a74]"
+                    }`}
                   >
                     {index + 1}
                   </span>
@@ -592,12 +596,13 @@ function App() {
                         {["A. Planning", "B. Exploration", "C. Ideation"].map((phase, index) => (
                           <div
                             key={phase}
-                            className={`rounded-md px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.05em] sm:text-xs ${index === 0
-                              ? "bg-[#dfeaf0] text-[#365f78]"
-                              : index === 1
-                                ? "bg-[#dcefe8] text-[#397160]"
-                                : "bg-[#f4edc8] text-[#75682c]"
-                              }`}
+                            className={`rounded-md px-2 py-2 text-center text-[10px] font-bold uppercase tracking-[0.05em] sm:text-xs ${
+                              index === 0
+                                ? "bg-[#dfeaf0] text-[#365f78]"
+                                : index === 1
+                                  ? "bg-[#dcefe8] text-[#397160]"
+                                  : "bg-[#f4edc8] text-[#75682c]"
+                            }`}
                           >
                             {phase}
                           </div>
@@ -607,8 +612,9 @@ function App() {
                   </div>
                 ) : (
                   <div
-                    className={`paper-card mb-6 ${activePhase === 1 ? "bg-[#f3faf7]" : "bg-[#fffaf0]"
-                      }`}
+                    className={`paper-card mb-6 ${
+                      activePhase === 1 ? "bg-[#f3faf7]" : "bg-[#fffaf0]"
+                    }`}
                   >
                     <div className="mb-4 flex items-center justify-between gap-3">
                       <div>
@@ -692,13 +698,24 @@ function App() {
                     </div>
 
                     <div className="mb-3 flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.08em] text-[#7a6b45]">
-                      <span>{aiStatus === "ready" ? "Google AI Studio connected" : aiStatus === "loading" ? "Generating custom prompts" : "Prototype fallback mode"}</span>
-                      <span>{import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY ? "AI" : "Local"}</span>
+                      <span>
+                        {aiStatus === "ready"
+                          ? "Google AI Studio connected"
+                          : aiStatus === "loading"
+                            ? "Generating custom prompts"
+                            : "Prototype fallback mode"}
+                      </span>
+                      <span>
+                        {import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
+                          ? "AI"
+                          : "Local"}
+                      </span>
                     </div>
 
                     {aiPrompts.length === 0 ? (
                       <div className="rounded-xl border border-dashed border-[#d8c57a] bg-[#fffdf7] p-4 text-sm leading-6 text-[#66582d]">
-                        Start by writing your own project context above. Once there is content to work from, the prompt bank will generate ideas tailored to your brief.
+                        Start by writing your own project context above. Once there is content to
+                        work from, the prompt bank will generate ideas tailored to your brief.
                       </div>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -811,10 +828,11 @@ function App() {
                 {phases.map((phase, index) => (
                   <div key={phase.title} className="flex shrink-0 items-center gap-2">
                     <div
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${index === 0
-                        ? "border-[#8eae9f] bg-[#e3eee8] text-[#3f715d]"
-                        : "border-[#d7d8d2] bg-white text-[#6c6f69]"
-                        }`}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                        index === 0
+                          ? "border-[#8eae9f] bg-[#e3eee8] text-[#3f715d]"
+                          : "border-[#d7d8d2] bg-white text-[#6c6f69]"
+                      }`}
                     >
                       {String.fromCharCode(65 + index)}. {phase.title}
                     </div>
@@ -858,10 +876,11 @@ function App() {
                             changePhase(phaseIndex);
                             setLibraryOpen(false);
                           }}
-                          className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${phaseIndex === activePhase
-                            ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
-                            : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
-                            }`}
+                          className={`w-full rounded-md px-2.5 py-2 text-left text-[11px] leading-4 transition ${
+                            phaseIndex === activePhase
+                              ? "bg-[#e7f0eb] font-semibold text-[#3f715d]"
+                              : "bg-[#f7f7f4] text-[#5f625c] hover:bg-[#efefe9]"
+                          }`}
                         >
                           {method}
                         </button>
@@ -993,8 +1012,9 @@ function CoachPanel({
           return (
             <div
               key={suggestion.id}
-              className={`rounded-lg border border-[#deded7] border-l-[3px] p-4 ${suggestion.importance === "high" ? "ring-1 ring-[#d5b163]/50" : ""
-                } ${typeStyles[suggestion.type].shell}`}
+              className={`rounded-lg border border-[#deded7] border-l-[3px] p-4 ${
+                suggestion.importance === "high" ? "ring-1 ring-[#d5b163]/50" : ""
+              } ${typeStyles[suggestion.type].shell}`}
             >
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2">
