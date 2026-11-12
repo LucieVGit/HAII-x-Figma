@@ -1,7 +1,7 @@
-# UXmethod — Streamlit version
+# UXmethod — canonical Streamlit app
 
-A Python/Streamlit port of the UXmethod design in `src/App.tsx`. Gemini is called from the
-server, so your API key is never sent to the browser.
+Streamlit is the canonical UXmethod interface. The React/Figma files are visual reference only.
+Gemini runs server-side through `streamlit_app/ai.py`; API keys never reach the browser or Git.
 
 ## Setup
 
@@ -19,9 +19,9 @@ py -m venv .venv
 .venv\Scripts\activate.bat
 python -m pip install -r requirements.txt
 ```
-The app reads the API key from the `.env` file at the repo root, which is shared with the React app.
-Any of these variable names work: `GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `VITE_GEMINI_API_KEY`.
-When you deploy to Streamlit Community Cloud, put `GEMINI_API_KEY` in the app's **Secrets** instead.
+Configure `GEMINI_API_KEY` or `GOOGLE_API_KEY` in Streamlit secrets. Do not put keys in frontend
+code, `.env` files committed to Git, or the repository. On Streamlit Community Cloud, add
+`GEMINI_API_KEY` in the app's **Secrets** settings.
 
 The model can be changed with `GEMINI_MODEL`. It defaults to `gemini-3.8-flash`.
 
@@ -46,7 +46,9 @@ Run it from inside `streamlit_app/` so the theme in `.streamlit/config.toml` is 
 
 - **AI coach → "Review with AI coach"**: reads the notebook for the current phase and returns 3 ranked
   suggestions (add / reframe / consider). You can apply, comment on, or dismiss each one.
-- **Ideation → Brainstorming prompt bank**: generates 6 prompts from your notebook. Clicking a prompt
-  adds it to the notebook. If there's no key, or the call fails, it falls back to local template prompts.
+- **Ideation → Brainstorming prompt bank**: generates 6 prompts from the complete project context.
+  Clicking a prompt adds it to the brainstorming notebook.
+- **Ideation → Idea landscape**: places every brainstorming idea on a visual map and labels its
+  dimension for quick review.
 
 Notes last for one browser session. Use **Download notes (.md)** in the sidebar to keep a copy.

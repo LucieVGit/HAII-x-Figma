@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
+  BarChart3,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -65,6 +66,12 @@ const phases = [
       "14 · Generative techniques",
     ],
   },
+];
+
+const phaseDescriptions = [
+  "Frame a clear, responsible brief before you start making. Define the opportunity, gather what is already known, recruit the right people, and protect participants.",
+  "Learn from people and their context. Use conversations, observation, surveys, and creative probes to uncover needs, behaviors, tensions, and opportunities.",
+  "Turn evidence into possibilities. Generate broadly, connect insights, sketch directions, and keep enough variety before choosing what to develop.",
 ];
 
 const phaseCoachWhy = [
@@ -209,30 +216,18 @@ const methodPages = [
   },
 ];
 
-function buildContextualFallbackPrompts(projectText: string): string[] {
-  const normalized = projectText.replace(/\s+/g, " ").trim();
-  if (!normalized) return [];
+type IdeaAnalysis = {
+  id: number;
+  text: string;
+  dimension: string;
+  x: number;
+  y: number;
+};
 
-  const context = normalized.length > 180 ? `${normalized.slice(0, 180).trim()}…` : normalized;
-  const safeContext = context || "your project idea";
-
-  return [
-    `How might we reduce friction in the experience described by "${safeContext}"?`,
-    `What if we helped users feel more confident before making a decision in "${safeContext}"?`,
-    `How might we support different user needs and situations behind "${safeContext}" without adding complexity?`,
-    `What if the solution made the value visible earlier for users of "${safeContext}"?`,
-    `How might we turn the main pain point in "${safeContext}" into a more rewarding experience?`,
-    `What if the product adapted to user context, time, and preferences in "${safeContext}"?`,
-  ];
-}
-
-async function generateCustomBrainstormingPrompts(projectText: string): Promise<string[]> {
-  const fallback = buildContextualFallbackPrompts(projectText);
-  const trimmed = projectText.trim();
+async function generateCustomBrainstormingPrompts(projectContext: string): Promise<string[]> {
+  const trimmed = projectContext.trim();
   if (!trimmed) return [];
-
-  const googleApiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY;
-  if (!googleApiKey) return fallback;
+  throw new Error("Gemini is available through the canonical Streamlit app.");
 
   const model = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
   const baseUrl =
@@ -251,7 +246,7 @@ async function generateCustomBrainstormingPrompts(projectText: string): Promise<
             role: "user",
             parts: [
               {
-                text: `You are a UX ideation coach. Based on this project context, generate exactly 6 short, practical brainstorming prompts for a user-centered design project. Use the project's context. Return only the prompts, one per line, no numbering, no explanations, no markdown.\n\nProject context:\n${trimmed}`,
+                text: `You are a UX ideation coach. Use every piece of the project context below, including research notes and earlier decisions. Generate exactly 6 short, practical brainstorming prompts that are specific to this project and help the user diverge. Return only the prompts, one per line, no numbering, no explanations, no markdown.\n\nFull project context:\n${trimmed}`,
               },
             ],
           },
@@ -277,14 +272,75 @@ async function generateCustomBrainstormingPrompts(projectText: string): Promise<
       .filter((line) => line.length > 12)
       .slice(0, 6);
 
-    return prompts.length > 0 ? prompts : fallback;
+    if (prompts.length === 0) throw new Error("Gemini returned no usable brainstorming prompts.");
+    return prompts;
   } catch (error) {
-    console.warn(
-      "Google AI Studio brainstorming generation failed, using contextual fallback.",
-      error,
-    );
-    return fallback;
+    console.warn("Google AI Studio brainstorming generation failed.", error);
+    throw error;
   }
+}
+
+async function analyzeBrainstormingIdeas(
+  ideas: string[],
+  projectContext: string,
+): Promise<IdeaAnalysis[]> {
+  if (ideas.length === 0) {
+    return ideas.map((text, index) => ({
+      id: index + 1,
+      text,
+      dimension: "Needs review",
+      x: 18 + ((index * 29) % 70),
+      y: 22 + ((index * 41) % 60),
+    }));
+  }
+  return ideas.map((text, index) => ({
+    id: index + 1,
+    text,
+    dimension: "Needs review",
+    x: 18 + ((index * 29) % 70),
+    y: 22 + ((index * 41) % 60),
+  }));
+
+  const model = import.meta.env.VITE_GEMINI_MODEL || "gemini-2.0-flash";
+  const baseUrl =
+    import.meta.env.VITE_GEMINI_BASE_URL ||
+    "https://generativelanguage.googleapis.com/v1beta/models";
+  const response = await fetch(`${baseUrl}/${model}:generateContent?key=${googleApiKey}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `You are a UX synthesis coach. Place each numbered idea on a useful creative dimension based on the full project context. Return only valid JSON with this shape: {"ideas":[{"id":1,"dimension":"short label","x":0-100,"y":0-100}]}. Use different dimensions when useful, keep labels under 24 characters, and include every idea id exactly once. Do not rewrite the ideas.\n\nFull project context:\n${projectContext}\n\nIdeas:\n${ideas.map((idea, index) => `${index + 1}. ${idea}`).join("\n")}`,
+            },
+          ],
+        },
+      ],
+      generationConfig: { temperature: 0.3, responseMimeType: "application/json" },
+    }),
+  });
+
+  if (!response.ok) throw new Error(`AI request failed: ${response.status}`);
+  const data = await response.json();
+  const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) throw new Error("Gemini returned no idea analysis.");
+  const parsed = JSON.parse(content) as {
+    ideas?: Array<{ id?: number; dimension?: string; x?: number; y?: number }>;
+  };
+  const byId = new Map(parsed.ideas?.map((idea) => [idea.id, idea]) ?? []);
+  return ideas.map((text, index) => {
+    const result = byId.get(index + 1);
+    return {
+      id: index + 1,
+      text,
+      dimension: result?.dimension?.trim() || "Emerging direction",
+      x: Math.max(0, Math.min(100, result?.x ?? 50)),
+      y: Math.max(0, Math.min(100, result?.y ?? 50)),
+    };
+  });
 }
 
 const suggestionsByPhase: Suggestion[][] = [
@@ -401,6 +457,10 @@ const typeStyles: Record<SuggestionType, { shell: string; badge: string }> = {
 
 function App() {
   const [activeMethod, setActiveMethod] = useState(0);
+  const [homeOpen, setHomeOpen] = useState(true);
+  const [projectName, setProjectName] = useState(
+    () => localStorage.getItem("uxmethod-project-name") || "",
+  );
   const [expandedPhases, setExpandedPhases] = useState([true, true, true]);
   const [notebooks, setNotebooks] = useState<string[]>(() => {
     return methodPages.map((method, index) => {
@@ -427,27 +487,96 @@ function App() {
   const [saved, setSaved] = useState(true);
   const [aiPrompts, setAiPrompts] = useState<string[]>([]);
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
-  const [aiStatus, setAiStatus] = useState<"ready" | "fallback" | "loading">("ready");
+  const [aiStatus, setAiStatus] = useState<"ready" | "unavailable" | "loading">("ready");
+  const [aiError, setAiError] = useState("");
+  const [ideaAnalysis, setIdeaAnalysis] = useState<IdeaAnalysis[]>([]);
+  const [isAnalyzingIdeas, setIsAnalyzingIdeas] = useState(false);
 
   const page = methodPages[activeMethod];
   const activePhase = page.phaseIndex;
   const projectText = notebooks[activeMethod];
+  const projectContext = useMemo(
+    () =>
+      methodPages
+        .map((method, index) => {
+          const text = notebooks[index].trim();
+          return text ? `${method.code} · ${method.title}\n${text}` : "";
+        })
+        .filter(Boolean)
+        .join("\n\n"),
+    [notebooks],
+  );
+  const brainstormingIdeas = useMemo(
+    () =>
+      projectText
+        .split(/\n+/)
+        .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+        .filter(Boolean),
+    [projectText],
+  );
 
   useEffect(() => {
     if (page.code !== "9") return;
 
     const timer = window.setTimeout(async () => {
-      const generated = await generateCustomBrainstormingPrompts(notebooks[activeMethod]);
-      setAiPrompts(generated);
-      setAiStatus(
-        import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
-          ? "ready"
-          : "fallback",
-      );
+      if (!projectContext) {
+        setAiPrompts([]);
+        setAiStatus("ready");
+        return;
+      }
+      try {
+        const generated = await generateCustomBrainstormingPrompts(projectContext);
+        setAiPrompts(generated);
+        setAiError("");
+        setAiStatus("ready");
+      } catch (error) {
+        setAiPrompts([]);
+        setAiStatus("unavailable");
+        setAiError(error instanceof Error ? error.message : "Gemini prompt generation failed.");
+      }
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [activeMethod, notebooks, page.code]);
+  }, [page.code, projectContext]);
+
+  useEffect(() => {
+    if (page.code !== "9" || brainstormingIdeas.length === 0) {
+      setIdeaAnalysis([]);
+      return;
+    }
+
+    let cancelled = false;
+    setIsAnalyzingIdeas(true);
+    analyzeBrainstormingIdeas(brainstormingIdeas, projectContext)
+      .then((analysis) => {
+        if (!cancelled) setIdeaAnalysis(analysis);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setIdeaAnalysis(
+            brainstormingIdeas.map((text, index) => ({
+              id: index + 1,
+              text,
+              dimension: "Needs review",
+              x: 18 + ((index * 29) % 70),
+              y: 22 + ((index * 41) % 60),
+            })),
+          );
+          setAiError(error instanceof Error ? error.message : "Gemini idea analysis failed.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsAnalyzingIdeas(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [brainstormingIdeas, page.code, projectContext]);
+
+  useEffect(() => {
+    localStorage.setItem("uxmethod-project-name", projectName);
+  }, [projectName]);
 
   useEffect(() => {
     setSaved(false);
@@ -477,23 +606,26 @@ function App() {
   async function generateBrainstormingPrompts() {
     if (page.code !== "9") return;
 
-    if (!projectText.trim()) {
+    if (!projectContext) {
       setAiPrompts([]);
       setAiStatus("ready");
+      setAiError("");
       setIsGeneratingPrompts(false);
       return;
     }
 
     setIsGeneratingPrompts(true);
     setAiStatus("loading");
-
-    const generated = await generateCustomBrainstormingPrompts(projectText);
-    setAiPrompts(generated);
-    setAiStatus(
-      import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
-        ? "ready"
-        : "fallback",
-    );
+    try {
+      const generated = await generateCustomBrainstormingPrompts(projectContext);
+      setAiPrompts(generated);
+      setAiError("");
+      setAiStatus("ready");
+    } catch (error) {
+      setAiPrompts([]);
+      setAiStatus("unavailable");
+      setAiError(error instanceof Error ? error.message : "Gemini prompt generation failed.");
+    }
     setIsGeneratingPrompts(false);
   }
 
@@ -513,6 +645,12 @@ function App() {
     setComment("");
     setCommentSaved(false);
     setShowComment(false);
+    setSidebarOpen(false);
+    setHomeOpen(false);
+  }
+
+  function navigateHome() {
+    setHomeOpen(true);
     setSidebarOpen(false);
   }
 
@@ -558,8 +696,11 @@ function App() {
             <img src="/uxmethod-logo.png" alt="UXmethod" className="h-9 w-[58px] object-contain" />
             <span className="font-semibold tracking-[-0.03em]">UXmethod</span>
             <span className="hidden h-5 w-px bg-[#d8d8d1] sm:block" />
-            <button className="hidden items-center gap-2 text-sm font-medium text-[#4b4d48] sm:flex">
-              Your project
+            <button
+              onClick={navigateHome}
+              className="hidden max-w-[220px] items-center gap-2 truncate text-sm font-medium text-[#4b4d48] sm:flex"
+            >
+              {projectName.trim() || "Your project"}
               <ChevronDown size={15} />
             </button>
           </div>
@@ -617,6 +758,17 @@ function App() {
             </div>
 
             <nav className="flex-1 space-y-1 overflow-y-auto">
+              <button
+                onClick={navigateHome}
+                className={`mb-3 flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
+                  homeOpen
+                    ? "bg-white text-[#376e59] shadow-[0_1px_2px_rgba(0,0,0,.04)]"
+                    : "text-[#666963] hover:bg-white/70"
+                }`}
+              >
+                <BookOpen size={16} />
+                Project overview
+              </button>
               {phases.map((phase, phaseIndex) => {
                 const methods = methodPages
                   .map((method, methodIndex) => ({ ...method, methodIndex }))
@@ -704,6 +856,96 @@ function App() {
           <div className="grid min-h-[calc(100vh-68px)] xl:grid-cols-[minmax(0,1fr)_390px]">
             <section className="min-w-0 px-5 py-8 sm:px-9 lg:px-12 lg:py-10">
               <div className="mx-auto max-w-[760px]">
+                {homeOpen ? (
+                  <div>
+                    <div className="mb-10">
+                      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#4d846f]">
+                        <span className="h-px w-5 bg-[#4d846f]" />
+                        Start here
+                      </div>
+                      <h1 className="editorial-title max-w-2xl">Make sense of the messy middle.</h1>
+                      <p className="mt-4 max-w-2xl text-[15px] leading-7 text-[#6c6f69]">
+                        UXmethod helps you move from an open question to grounded ideas. Capture
+                        what you know, learn from people, then make and compare possibilities
+                        without losing the thread.
+                      </p>
+                    </div>
+
+                    <div className="paper-card mb-8 bg-[#f3f7f4]">
+                      <label
+                        htmlFor="project-name"
+                        className="text-xs font-bold uppercase tracking-[0.12em] text-[#47715f]"
+                      >
+                        Name your project
+                      </label>
+                      <input
+                        id="project-name"
+                        value={projectName}
+                        onChange={(event) => setProjectName(event.target.value)}
+                        placeholder="e.g. A better way to find study spaces"
+                        className="mt-3 w-full border-b border-[#a9c1b2] bg-transparent pb-2 text-2xl font-semibold tracking-[-0.03em] text-[#2d4d3e] outline-none placeholder:text-[#9aada2] focus:border-[#4d846f]"
+                      />
+                      <p className="mt-3 text-xs leading-5 text-[#68716b]">
+                        This name is saved locally and will appear at the top of every page.
+                      </p>
+                    </div>
+
+                    <div className="mb-5">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.13em] text-[#858880]">
+                        Your three-part journey
+                      </div>
+                      <h2 className="mt-1 text-xl font-semibold tracking-[-0.02em]">
+                        Choose where to begin
+                      </h2>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {phases.map((phase, phaseIndex) => {
+                        const firstMethod = methodPages.findIndex(
+                          (method) => method.phaseIndex === phaseIndex,
+                        );
+                        return (
+                          <article
+                            key={phase.title}
+                            className="flex flex-col rounded-xl border border-[#deded8] bg-white p-5"
+                          >
+                            <div className="mb-4 flex size-9 items-center justify-center rounded-full bg-[#dce9e2] text-sm font-bold text-[#3c705b]">
+                              {phaseIndex + 1}
+                            </div>
+                            <h3 className="text-base font-semibold">{phase.title}</h3>
+                            <p className="mt-1 text-xs font-medium text-[#6c6f69]">
+                              {phase.subtitle}
+                            </p>
+                            <p className="mt-4 flex-1 text-sm leading-6 text-[#747770]">
+                              {phaseDescriptions[phaseIndex]}
+                            </p>
+                            <button
+                              onClick={() => navigateToMethod(firstMethod)}
+                              className="mt-5 flex items-center gap-1 text-left text-xs font-semibold text-[#47715f] hover:text-[#2f604b]"
+                            >
+                              Open {phase.title}
+                              <ChevronRight size={14} />
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-8 rounded-xl border border-[#deded8] bg-white p-5">
+                      <div className="flex items-start gap-3">
+                        <Sparkles size={18} className="mt-0.5 shrink-0 text-[#4d846f]" />
+                        <div>
+                          <h2 className="text-sm font-semibold">A flexible workspace</h2>
+                          <p className="mt-1 text-xs leading-5 text-[#747770]">
+                            You can move between any subsection at any time using the menu. Your
+                            notes are saved locally, so you can follow the path that fits your
+                            project instead of completing steps in a fixed order.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 <div className="mb-9">
                   <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#4d846f]">
                     <span className="h-px w-5 bg-[#4d846f]" />
@@ -820,8 +1062,11 @@ function App() {
                   <textarea
                     value={projectText}
                     onChange={(event) => setProjectText(event.target.value)}
-                    placeholder={`Write your ${page.title.toLowerCase()} notes here…`}
-                    className="min-h-[360px] w-full resize-y rounded-lg border border-[#d9dad4] bg-[#fcfcfa] p-5 text-[15px] leading-7 text-[#343632] outline-none transition placeholder:text-[#9aa099] focus:border-[#7fa18f] focus:ring-3 focus:ring-[#dce9e2]/70"
+                    placeholder={`Write your ${page.title.toLowerCase()} ideas here, one per line…`}
+                    rows={3}
+                    className={`w-full resize-y rounded-lg border border-[#d9dad4] bg-[#fcfcfa] p-4 text-[15px] leading-7 text-[#343632] outline-none transition placeholder:text-[#9aa099] focus:border-[#7fa18f] focus:ring-3 focus:ring-[#dce9e2]/70 ${
+                      page.code === "9" ? "min-h-[108px]" : "min-h-[360px]"
+                    }`}
                     aria-label="Project idea"
                   />
                   <div className="mt-3 flex items-center justify-between">
@@ -834,93 +1079,183 @@ function App() {
                 </div>
 
                 {page.code === "9" && (
-                  <div className="paper-card mb-6 bg-[#fffaf0]">
-                    <div className="mb-4 flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-[#f4e7bd] text-[#7d5e1d]">
-                        <Lightbulb size={17} />
+                  <>
+                    <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
+                      <div className="paper-card bg-[#fffdf7]">
+                        <div className="mb-4 flex items-center gap-3">
+                          <div className="flex size-9 items-center justify-center rounded-lg bg-[#f4e7bd] text-[#7d5e1d]">
+                            <Lightbulb size={17} />
+                          </div>
+                          <div>
+                            <h2 className="text-sm font-semibold">Prompt bank</h2>
+                            <p className="text-xs text-[#766a4c]">
+                              Gemini reads your whole project and keeps these prompts specific.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mb-3 flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.08em] text-[#7a6b45]">
+                          <span>
+                            {aiStatus === "ready"
+                              ? "Gemini connected"
+                              : aiStatus === "loading"
+                                ? "Generating"
+                                : "Gemini unavailable"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={generateBrainstormingPrompts}
+                            disabled={isGeneratingPrompts || !projectContext}
+                            className="font-semibold text-[#6a5623] underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isGeneratingPrompts ? "Working…" : "Refresh"}
+                          </button>
+                        </div>
+                        {aiPrompts.length > 0 ? (
+                          <div className="space-y-2">
+                            {aiPrompts.map((prompt) => (
+                              <button
+                                key={prompt}
+                                type="button"
+                                onClick={() => insertBrainstormingPrompt(prompt)}
+                                className="w-full rounded-xl border border-[#e7d8a2] bg-white/80 p-3 text-left text-xs leading-5 text-[#4d4d4a] transition hover:border-[#d5b96d] hover:bg-[#fffdf5]"
+                              >
+                                {prompt}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-[#d8c57a] bg-white/70 p-3 text-xs leading-5 text-[#66582d]">
+                            {projectContext
+                              ? "Gemini is preparing prompts from your project context."
+                              : "Add project context in the other method pages to unlock prompts."}
+                          </div>
+                        )}
+                        {aiError && (
+                          <p className="mt-3 text-[11px] leading-4 text-[#a94c43]">{aiError}</p>
+                        )}
                       </div>
-                      <div className="flex-1">
-                        <h2 className="text-sm font-semibold">Brainstorming prompt bank</h2>
-                        <p className="text-xs text-[#766a4c]">
-                          Use these prompts to stretch your ideation before selecting a direction.
+
+                      <div className="rounded-xl border border-[#ded3ad] bg-[#f8f1d8] p-4 text-xs leading-5 text-[#66582d]">
+                        <div className="mb-2 flex items-center gap-2 font-semibold">
+                          <Sparkles size={14} />
+                          Context-aware coach
+                        </div>
+                        <p>
+                          Prompts use notes from every method, not just this page. Add research,
+                          constraints, and user needs anywhere in the guide.
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={generateBrainstormingPrompts}
-                        disabled={isGeneratingPrompts}
-                        className="rounded-lg border border-[#d6bc72] bg-[#fffdf7] px-3 py-2 text-[11px] font-semibold text-[#6a5623] transition hover:bg-[#fffaf0] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isGeneratingPrompts ? "Generating…" : "Generate for this project"}
-                      </button>
                     </div>
 
-                    <div className="mb-3 flex items-center justify-between gap-3 text-[10px] font-medium uppercase tracking-[0.08em] text-[#7a6b45]">
-                      <span>
-                        {aiStatus === "ready"
-                          ? "Google AI Studio connected"
-                          : aiStatus === "loading"
-                            ? "Generating custom prompts"
-                            : "Prototype fallback mode"}
-                      </span>
-                      <span>
-                        {import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY
-                          ? "AI"
-                          : "Local"}
-                      </span>
+                    <div className="paper-card mb-6">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <BarChart3 size={17} className="text-[#4d846f]" />
+                            <h2 className="text-sm font-semibold">Idea landscape</h2>
+                          </div>
+                          <p className="mt-1 text-xs text-[#7b7e77]">
+                            Gemini places each idea on a visual map for a quick review.
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-[#e6eee8] px-2.5 py-1 text-[11px] font-semibold text-[#3d725b]">
+                          {brainstormingIdeas.length}{" "}
+                          {brainstormingIdeas.length === 1 ? "idea" : "ideas"}
+                        </span>
+                      </div>
+                      {brainstormingIdeas.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-[#cfd8d1] bg-[#f8fbf8] p-6 text-center text-sm text-[#68736c]">
+                          Your ideas will appear here as you write them above, one per line.
+                        </div>
+                      ) : (
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_210px]">
+                          <div className="relative min-h-[300px] overflow-hidden rounded-xl border border-[#d8e2db] bg-[#f8fbf8]">
+                            <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_49.8%,#dce7df_50%,transparent_50.2%),linear-gradient(to_bottom,transparent_49.8%,#dce7df_50%,transparent_50.2%)]" />
+                            <span className="absolute left-3 top-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#829189]">
+                              More exploratory
+                            </span>
+                            <span className="absolute bottom-2 right-3 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#829189]">
+                              More actionable
+                            </span>
+                            {ideaAnalysis.map((idea) => (
+                              <div
+                                key={idea.id}
+                                title={idea.text}
+                                className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#4d846f] text-xs font-bold text-white shadow-md"
+                                style={{ left: `${idea.x}%`, top: `${idea.y}%` }}
+                              >
+                                {idea.id}
+                              </div>
+                            ))}
+                            {isAnalyzingIdeas && (
+                              <div className="absolute inset-x-0 bottom-3 text-center text-[11px] font-medium text-[#5e7869]">
+                                Gemini is mapping your ideas…
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            {ideaAnalysis.map((idea) => (
+                              <div
+                                key={idea.id}
+                                className="rounded-lg border border-[#e0e5df] bg-white p-2.5"
+                              >
+                                <div className="flex items-start gap-2">
+                                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#dce9e2] text-[10px] font-bold text-[#3d725b]">
+                                    {idea.id}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="text-[11px] font-semibold text-[#47715f]">
+                                      {idea.dimension}
+                                    </div>
+                                    <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-[#666b64]">
+                                      {idea.text}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-
-                    {aiPrompts.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-[#d8c57a] bg-[#fffdf7] p-4 text-sm leading-6 text-[#66582d]">
-                        Start by writing your own project context above. Once there is content to
-                        work from, the prompt bank will generate ideas tailored to your brief.
-                      </div>
-                    ) : (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {aiPrompts.map((prompt) => (
-                          <button
-                            key={prompt}
-                            type="button"
-                            onClick={() => insertBrainstormingPrompt(prompt)}
-                            className="rounded-xl border border-[#e7d8a2] bg-white/80 p-3 text-left text-xs leading-5 text-[#4d4d4a] transition hover:border-[#d5b96d] hover:bg-[#fffdf5]"
-                          >
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  </>
+                )}
+                  </>
                 )}
               </div>
             </section>
 
-            <aside className="hidden border-l border-[#deded8] bg-[#f3f3ef] xl:block">
-              <CoachPanel
-                suggestions={visibleSuggestions}
-                accepted={accepted}
-                onAccept={acceptSuggestion}
-                onDismiss={dismissSuggestion}
-                comment={comment}
-                onOpenMethod={() => setLibraryOpen(true)}
-                coachBasis={`${phases[activePhase].title} · Method ${page.code}`}
-                why={phaseCoachWhy[activePhase]}
-                phaseLabel={phases[activePhase].title}
-              />
-            </aside>
+            {!homeOpen && (
+              <aside className="hidden border-l border-[#deded8] bg-[#f3f3ef] xl:block">
+                <CoachPanel
+                  suggestions={visibleSuggestions}
+                  accepted={accepted}
+                  onAccept={acceptSuggestion}
+                  onDismiss={dismissSuggestion}
+                  comment={comment}
+                  onOpenMethod={() => setLibraryOpen(true)}
+                  coachBasis={`${phases[activePhase].title} · Method ${page.code}`}
+                  why={phaseCoachWhy[activePhase]}
+                  phaseLabel={phases[activePhase].title}
+                />
+              </aside>
+            )}
           </div>
         </main>
       </div>
 
-      <button
-        onClick={() => setCoachOpen(true)}
-        className="fixed bottom-5 right-5 flex items-center gap-2 rounded-full bg-[#2c302c] px-4 py-3 text-sm font-medium text-white shadow-lg xl:hidden"
-      >
-        <Sparkles size={17} />
-        AI coach
-        <span className="flex size-5 items-center justify-center rounded-full bg-[#d9a74b] text-[11px] text-[#282b27]">
-          {visibleSuggestions.length}
-        </span>
-      </button>
+      {!homeOpen && (
+        <button
+          onClick={() => setCoachOpen(true)}
+          className="fixed bottom-5 right-5 flex items-center gap-2 rounded-full bg-[#2c302c] px-4 py-3 text-sm font-medium text-white shadow-lg xl:hidden"
+        >
+          <Sparkles size={17} />
+          AI coach
+          <span className="flex size-5 items-center justify-center rounded-full bg-[#d9a74b] text-[11px] text-[#282b27]">
+            {visibleSuggestions.length}
+          </span>
+        </button>
+      )}
 
       {coachOpen && (
         <div className="fixed inset-0 z-50 bg-black/30 xl:hidden">

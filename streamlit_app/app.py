@@ -8,40 +8,17 @@ from __future__ import annotations
 
 import base64
 import html
-import json
-import os
 import re
 from pathlib import Path
 
 import streamlit as st
-from dotenv import load_dotenv
+from ai import API_KEY, MODEL, analyze_ideas, generate_brainstorm_prompts, generate_coach_suggestions, short_error
 
 APP_DIR = Path(__file__).resolve().parent
 ROOT = APP_DIR.parent
 PUBLIC = ROOT / "public"
 LOGO = PUBLIC / "uxmethod-logo.png"
 SCOPE_IMG = PUBLIC / "methodology-scope.png"
-
-load_dotenv(ROOT / ".env")
-load_dotenv(APP_DIR / ".env")
-
-
-def _get_api_key() -> str | None:
-    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "VITE_GEMINI_API_KEY", "VITE_GOOGLE_API_KEY"):
-        value = os.getenv(name)
-        if value and value.strip() and value.strip() != "your-api-key-here":
-            return value.strip()
-    try:
-        return st.secrets.get("GEMINI_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
-    except Exception:
-        return None
-
-
-API_KEY = _get_api_key()
-MODEL = os.getenv("GEMINI_MODEL") or os.getenv("VITE_GEMINI_MODEL") or "gemini-3.8-flash"
-# Tried in order when the main model is overloaded (503/429) or unavailable (404).
-BACKUP_MODELS = [m for m in ("gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite") if m != MODEL]
-st.session_state.setdefault("last_model", MODEL)
 
 # --------------------------------------------------------------------------------------
 # Content (ported from src/App.tsx)
@@ -111,6 +88,30 @@ PAGES = [
         "coach_basis": "Ideation method 9 · Brainstorming",
         "why": "The book treats brainstorming as a divergence activity: generate lots of options, defer judgment, combine ideas, and keep the problem framing anchored in user evidence.",
     },
+]
+
+METHODS = [
+    {"phase": 0, "code": "1a", "title": "Project definition", "description": "Frame the request, objectives, stakeholders, constraints, and signs of success.", "notebook_title": "Define your project", "notebook_help": "Describe the problem and intended outcome before committing to a solution."},
+    {"phase": 0, "code": "1b", "title": "Secondary research", "description": "Review existing knowledge, comparable services, trends, and internal resources.", "notebook_title": "Document what is already known", "notebook_help": "Capture useful sources, findings, competitors, and unanswered questions."},
+    {"phase": 0, "code": "2", "title": "User recruitment", "description": "Define who should participate and how you will reach a relevant, ethical sample.", "notebook_title": "Plan your recruitment", "notebook_help": "Describe participant criteria, exclusions, channels, incentives, and target numbers."},
+    {"phase": 0, "code": "3", "title": "Ethics & deontology", "description": "Protect participants through consent, privacy, transparency, and responsible data use.", "notebook_title": "Record your ethical safeguards", "notebook_help": "Note consent, sensitive topics, data handling, risks, and participant rights."},
+    {"phase": 1, "code": "4", "title": "Interviews", "description": "Explore experiences, motivations, needs, and language through open conversation.", "notebook_title": "Interview notes", "notebook_help": "Keep questions, quotes, context, surprises, and follow-up points together."},
+    {"phase": 1, "code": "5", "title": "Focus groups", "description": "Use group discussion to reveal shared views, disagreements, and social dynamics.", "notebook_title": "Focus group notes", "notebook_help": "Capture themes, contrasting opinions, group effects, and notable participant quotes."},
+    {"phase": 1, "code": "6", "title": "Observation", "description": "Study what people actually do in context, including workarounds and environmental cues.", "notebook_title": "Observation log", "notebook_help": "Record behavior, place, time, triggers, obstacles, and your interpretation separately."},
+    {"phase": 1, "code": "7", "title": "Exploratory survey", "description": "Collect broader self-reported patterns to complement qualitative exploration.", "notebook_title": "Survey plan and findings", "notebook_help": "Draft objectives and questions, then record response patterns and limitations."},
+    {"phase": 1, "code": "8", "title": "Cultural probes", "description": "Invite participants to document and express parts of their everyday experience.", "notebook_title": "Cultural probe plan", "notebook_help": "Describe activities, materials, participant instructions, returns, and inspirations."},
+    {"phase": 2, "code": "9", "title": "Brainstorming", "description": "Generate many varied ideas, defer judgment, and build on the thinking of others.", "notebook_title": "Brainstorming: your idea space", "notebook_help": "Generate broadly before filtering. Keep user evidence visible as you work."},
+    {"phase": 2, "code": "10", "title": "Ideation cards", "description": "Use structured prompts and design principles to provoke new solution directions.", "notebook_title": "Ideas from the cards", "notebook_help": "Record each prompt, the idea it triggered, and its link to user evidence."},
+    {"phase": 2, "code": "11", "title": "Design studio", "description": "Sketch, share, critique, and combine ideas collaboratively around a shared brief.", "notebook_title": "Design studio workspace", "notebook_help": "Capture the brief, individual concepts, critique notes, and combined directions."},
+    {"phase": 2, "code": "12", "title": "Experience maps", "description": "Synthesize the user journey to reveal pain points, emotions, and design opportunities.", "notebook_title": "Map the experience", "notebook_help": "List stages, actions, thoughts, emotions, evidence, pain points, and opportunities."},
+    {"phase": 2, "code": "13", "title": "Personas", "description": "Create evidence-based user profiles that keep important behavioral patterns visible.", "notebook_title": "Persona evidence", "notebook_help": "Describe goals, behaviors, contexts, needs, and the research supporting each pattern."},
+    {"phase": 2, "code": "14", "title": "Generative techniques", "description": "Help users express tacit needs and imagine futures through creative activities.", "notebook_title": "Generative session notes", "notebook_help": "Plan the activity and capture artifacts, stories, interpretations, and emerging ideas."},
+]
+
+PHASE_DESCRIPTIONS = [
+    "Frame a clear, responsible brief before you start making. Define the opportunity, gather what is already known, recruit the right people, and protect participants.",
+    "Learn from people and their context. Use conversations, observation, surveys, and creative probes to uncover needs, behaviors, tensions, and opportunities.",
+    "Turn evidence into possibilities. Generate broadly, connect insights, sketch directions, and keep enough variety before choosing what to develop.",
 ]
 
 DEFAULT_SUGGESTIONS = [
@@ -204,147 +205,25 @@ DEFAULT_SUGGESTIONS = [
 ]
 
 # --------------------------------------------------------------------------------------
-# Gemini
-# --------------------------------------------------------------------------------------
-
-
-@st.cache_resource(show_spinner=False)
-def _client(api_key: str):
-    from google import genai
-    from google.genai import types
-
-    # Give up on a slow/overloaded model after 20 s so we can try the next one.
-    return genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=20_000))
-
-
-def call_gemini(prompt: str, *, temperature: float, json_mode: bool = False) -> str:
-    from google.genai import types
-
-    config = types.GenerateContentConfig(
-        temperature=temperature,
-        response_mime_type="application/json" if json_mode else None,
-    )
-    # Start with the model that last worked in this session, then the main and backup models.
-    candidates = list(dict.fromkeys([st.session_state.last_model, MODEL, *BACKUP_MODELS]))
-    last_error: Exception | None = None
-    for model in candidates:
-        try:
-            response = _client(API_KEY).models.generate_content(model=model, contents=prompt, config=config)
-            st.session_state.last_model = model
-            return response.text or ""
-        except Exception as error:  # noqa: BLE001
-            # Bad request / bad key won't be fixed by switching models.
-            if getattr(error, "code", None) in (400, 401, 403):
-                raise
-            last_error = error
-    raise last_error  # type: ignore[misc]
-
-
-def _short_error(error: Exception) -> str:
-    message = str(error).replace("\n", " ")
-    return message[:220] + ("…" if len(message) > 220 else "")
-
-
-def fallback_prompts(project_text: str) -> list[str]:
-    normalized = re.sub(r"\s+", " ", project_text).strip()
-    if not normalized:
-        return []
-    ctx = f"{normalized[:180].strip()}…" if len(normalized) > 180 else normalized
-    return [
-        f'How might we reduce friction in the experience described by "{ctx}"?',
-        f'What if we helped users feel more confident before making a decision in "{ctx}"?',
-        f'How might we support different user needs and situations behind "{ctx}" without adding complexity?',
-        f'What if the solution made the value visible earlier for users of "{ctx}"?',
-        f'How might we turn the main pain point in "{ctx}" into a more rewarding experience?',
-        f'What if the product adapted to user context, time, and preferences in "{ctx}"?',
-    ]
-
-
-def generate_brainstorm_prompts(project_text: str) -> tuple[list[str], str, str]:
-    """Returns (prompts, status_kind, status_message). status_kind: ai | fallback."""
-    trimmed = project_text.strip()
-    if not trimmed:
-        return [], "ai", ""
-    if not API_KEY:
-        return fallback_prompts(trimmed), "fallback", "No API key found — using local prompts."
-    prompt = (
-        "You are a UX ideation coach. Based on this project context, generate exactly 6 short, "
-        "practical brainstorming prompts for a user-centered design project. Use the project's "
-        "context. Return only the prompts, one per line, no numbering, no explanations, no markdown."
-        f"\n\nProject context:\n{trimmed}"
-    )
-    try:
-        content = call_gemini(prompt, temperature=0.9)
-        prompts = [re.sub(r"^[-*•\d\s.]+", "", line).strip() for line in content.splitlines()]
-        prompts = [p for p in prompts if len(p) > 12][:6]
-        if prompts:
-            return prompts, "ai", f"Generated by {st.session_state.last_model}"
-        return fallback_prompts(trimmed), "fallback", "Gemini returned no prompts — using local prompts."
-    except Exception as error:  # noqa: BLE001
-        return fallback_prompts(trimmed), "fallback", f"Gemini error — using local prompts. {_short_error(error)}"
-
-
-def generate_coach_suggestions(phase: int, project_text: str) -> list[dict]:
-    page, info = PAGES[phase], PHASES[phase]
-    prompt = f"""You are an AI coach helping beginner UX designers apply a book-based UX methodology.
-Current phase: {info["title"]} ({info["subtitle"]}).
-Methods available in this phase: {", ".join(info["steps"])}.
-What the coach looks for at this stage: {page["why"]}
-
-Read the designer's notebook below and return exactly 3 suggestions, ranked most important first,
-as a JSON array. Each item must be an object with these keys:
-- "type": "add" (something missing to add), "remove" (something to reframe, cut, or a bias to fix), or "consider" (an open question for the team to reflect on)
-- "importance": "high", "medium" or "low" (first item high, then medium, then low)
-- "label": 1-3 word badge, e.g. "Essential", "Important", "Watch the bias"
-- "text": the suggestion, max 45 words, specific to the notebook content, citing the relevant method number
-- "action": a 2-4 word button label, e.g. "Add success criteria"
-- "applyText": for "add"/"remove", one or two sentences the designer could append to their notebook; for "consider", an empty string
-Write in the same language as the notebook. Do not invent research findings.
-
-Notebook:
-{project_text.strip()}"""
-    raw = call_gemini(prompt, temperature=0.6, json_mode=True)
-    data = json.loads(raw)
-    if isinstance(data, dict):
-        data = data.get("suggestions") or next((v for v in data.values() if isinstance(v, list)), [])
-    if not isinstance(data, list):
-        raise ValueError("Unexpected response format from Gemini.")
-
-    suggestions = []
-    for item in data[:3]:
-        if not isinstance(item, dict) or not str(item.get("text", "")).strip():
-            continue
-        s_type = item.get("type") if item.get("type") in ("add", "remove", "consider") else "consider"
-        importance = item.get("importance") if item.get("importance") in ("high", "medium", "low") else "medium"
-        st.session_state.next_id += 1
-        suggestions.append(
-            {
-                "id": st.session_state.next_id,
-                "type": s_type,
-                "importance": importance,
-                "label": str(item.get("label") or "Suggestion").strip()[:40],
-                "text": str(item["text"]).strip(),
-                "action": str(item.get("action") or ("Add comment" if s_type == "consider" else "Apply")).strip()[:40],
-                "applyText": "" if s_type == "consider" else str(item.get("applyText") or "").strip(),
-            }
-        )
-    if not suggestions:
-        raise ValueError("Gemini returned no usable suggestions.")
-    return suggestions
-
-
-# --------------------------------------------------------------------------------------
 # State & callbacks
 # --------------------------------------------------------------------------------------
 
 
 def init_state() -> None:
     ss = st.session_state
-    ss.setdefault("phase", 0)
-    ss.setdefault("notebooks", ["", "", ""])
+    ss.setdefault("page", -1)
+    if len(ss.get("notebooks", [])) != len(METHODS):
+        legacy = ss.get("notebooks", ["", "", ""])
+        ss.notebooks = [
+            legacy[method["phase"]] if method["phase"] < len(legacy) and i == next(
+                j for j, candidate in enumerate(METHODS) if candidate["phase"] == method["phase"]
+            ) else ""
+            for i, method in enumerate(METHODS)
+        ]
     ss.setdefault("suggestions", [list(s) for s in DEFAULT_SUGGESTIONS])
     ss.setdefault("accepted", [set(), set(), set()])
-    ss.setdefault("notes", [{}, {}, {}])
+    if len(ss.get("notes", [])) != len(METHODS):
+        ss.notes = [{} for _ in METHODS]
     ss.setdefault("ai_prompts", [])
     ss.setdefault("prompt_status", ("", ""))
     ss.setdefault("coach_status", [("", ""), ("", ""), ("", "")])
@@ -352,21 +231,30 @@ def init_state() -> None:
 
 
 def change_phase(index: int) -> None:
-    st.session_state.phase = index
+    st.session_state.page = next(i for i, method in enumerate(METHODS) if method["phase"] == index)
 
 
-def sync_notebook(phase: int) -> None:
-    st.session_state.notebooks[phase] = st.session_state[f"w_nb_{phase}"]
+def change_page(index: int) -> None:
+    st.session_state.page = index
 
 
-def append_to_notebook(phase: int, block: str) -> None:
-    current = st.session_state.notebooks[phase]
-    st.session_state.notebooks[phase] = f"{current}\n\n{block}" if current.strip() else block
+def current_phase(page: int) -> int:
+    return METHODS[page]["phase"]
 
 
-def accept_suggestion(phase: int, suggestion: dict) -> None:
+def sync_notebook(page: int) -> None:
+    st.session_state.notebooks[page] = st.session_state[f"w_nb_{page}"]
+
+
+def append_to_notebook(page: int, block: str) -> None:
+    current = st.session_state.notebooks[page]
+    st.session_state.notebooks[page] = f"{current}\n\n{block}" if current.strip() else block
+
+
+def accept_suggestion(page: int, suggestion: dict) -> None:
+    phase = current_phase(page)
     if suggestion["applyText"]:
-        append_to_notebook(phase, suggestion["applyText"])
+        append_to_notebook(page, suggestion["applyText"])
     st.session_state.accepted[phase].add(suggestion["id"])
 
 
@@ -375,26 +263,45 @@ def dismiss_suggestion(phase: int, sid: int) -> None:
 
 
 def insert_prompt(prompt: str) -> None:
-    if prompt not in st.session_state.notebooks[2]:
-        append_to_notebook(2, f"Brainstorming prompt: {prompt}")
+    if prompt not in st.session_state.notebooks[9]:
+        append_to_notebook(9, f"Brainstorming prompt: {prompt}")
 
 
-def overall_progress(phase: int) -> int:
-    length = len(st.session_state.notebooks[phase])
-    phase_progress = min(34, max(8, round(length / 22)))
-    return min(100, phase * 33 + phase_progress)
+def full_project_context() -> str:
+    return "\n\n".join(
+        f'{method["code"]} · {method["title"]}\n{st.session_state.notebooks[index].strip()}'
+        for index, method in enumerate(METHODS)
+        if st.session_state.notebooks[index].strip()
+    )
+
+
+def idea_lines() -> list[str]:
+    return [
+        re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip()
+        for line in st.session_state.notebooks[9].splitlines()
+        if line.strip()
+    ]
+
+
+def overall_progress(page: int) -> int:
+    started = sum(bool(text.strip()) for text in st.session_state.notebooks)
+    return round(started / len(METHODS) * 100)
 
 
 def notes_markdown() -> str:
     parts = ["# UXmethod — project notes\n"]
-    for i, phase in enumerate(PHASES):
-        parts.append(f"## {chr(65 + i)}. {phase['title']}\n")
-        parts.append((st.session_state.notebooks[i].strip() or "_Nothing written yet._") + "\n")
-        notes = st.session_state.notes[i]
-        if notes:
-            parts.append("**Team notes**\n")
-            parts.extend(f"- {n}" for n in notes.values())
-            parts.append("")
+    for phase_index, phase in enumerate(PHASES):
+        parts.append(f"## {chr(65 + phase_index)}. {phase['title']}\n")
+        for i, method in enumerate(METHODS):
+            if method["phase"] != phase_index:
+                continue
+            parts.append(f'### {method["code"]} · {method["title"]}\n')
+            parts.append((st.session_state.notebooks[i].strip() or "_Nothing written yet._") + "\n")
+            notes = st.session_state.notes[i]
+            if notes:
+                parts.append("**Team notes**\n")
+                parts.extend(f"- {n}" for n in notes.values())
+                parts.append("")
     return "\n".join(parts)
 
 
@@ -493,6 +400,14 @@ CSS = """
 }
 .st-key-card-prompts [data-testid="stBaseButton-secondary"]:hover { border-color: #d5b96d; background: #fffdf5; color: #4d4d4a; }
 .prompt-empty { border: 1px dashed #d8c57a; border-radius: 12px; background: #fffdf7; padding: 16px; font-size: 14px; line-height: 1.6; color: #66582d; }
+.phase-number { width: 36px; height: 36px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:#dce9e2; color:#3c705b; font-weight:700; margin-bottom:12px; }
+.idea-map { position:relative; min-height:300px; border:1px solid #d8e2db; border-radius:12px; background:linear-gradient(to right, transparent 49.8%, #dce7df 50%, transparent 50.2%),linear-gradient(to bottom, transparent 49.8%, #dce7df 50%, transparent 50.2%),#f8fbf8; margin:12px 0 16px; }
+.idea-point { position:absolute; transform:translate(-50%,-50%); width:36px; height:36px; display:flex; align-items:center; justify-content:center; border:2px solid white; border-radius:999px; background:#4d846f; color:white; font-size:12px; font-weight:700; box-shadow:0 2px 6px rgba(0,0,0,.15); }
+.map-label,.map-axis { position:absolute; color:#829189; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+.map-label { left:12px; top:10px; }.map-axis { right:12px; bottom:10px; }
+.idea-row { display:flex; gap:10px; padding:9px 0; border-top:1px solid #e0e5df; font-size:12px; line-height:1.45; color:#666b64; }
+.idea-row b { display:flex; width:22px; height:22px; align-items:center; justify-content:center; border-radius:999px; background:#dce9e2; color:#3d725b; flex-shrink:0; }
+.idea-row strong { color:#47715f; }
 </style>
 """
 
@@ -507,7 +422,7 @@ def img_b64(path: Path) -> str:
 
 
 @st.dialog("Add a consideration")
-def comment_dialog(phase: int, sid: int) -> None:
+def comment_dialog(page: int, sid: int) -> None:
     st.markdown(
         '<p class="muted" style="font-size:14px">Keep this thought visible as your project develops. '
         "You can revisit or resolve it when you have stronger evidence.</p>",
@@ -526,7 +441,8 @@ def comment_dialog(phase: int, sid: int) -> None:
         if not note.strip():
             st.warning("Write a note first.")
             return
-        st.session_state.notes[phase][sid] = note.strip()
+        phase = current_phase(page)
+        st.session_state.notes[page][sid] = note.strip()
         st.session_state.accepted[phase].add(sid)
         st.rerun()
 
@@ -571,22 +487,23 @@ def render_header() -> None:
     pill = (
         f'<span class="pill ok">● Gemini connected · {html.escape(MODEL)}</span>'
         if API_KEY
-        else '<span class="pill off">● No API key · local fallback</span>'
+        else '<span class="pill off">● No API key</span>'
     )
+    project_name = st.session_state.get("project_name", "").strip() or "Your project"
     st.markdown(
         f"""<div class="ux-header">
         {f'<img src="data:image/png;base64,{logo}" alt="UXmethod">' if logo else ''}
         <span class="brand">UXmethod</span><span class="sep"></span>
-        <span class="proj">Your project</span><span class="spacer"></span>{pill}
+        <span class="proj">{html.escape(project_name)}</span><span class="spacer"></span>{pill}
         </div>""",
         unsafe_allow_html=True,
     )
 
 
-def render_sidebar(phase: int) -> bool:
+def render_sidebar(page: int) -> bool:
     open_library = False
     with st.sidebar:
-        progress = overall_progress(phase)
+        progress = overall_progress(page)
         st.markdown(
             f'<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:500">'
             f"<span>Your progress</span><span>{progress}%</span></div>",
@@ -594,16 +511,23 @@ def render_sidebar(phase: int) -> bool:
         )
         st.progress(progress / 100)
         st.write("")
-        for i, info in enumerate(PHASES):
-            done = "✓" if i <= phase else "○"
-            st.button(
-                f"**{i + 1} · {info['title']}**  \n{info['subtitle']}  {done}",
-                key=f"nav-{i}",
-                type="primary" if i == phase else "tertiary",
-                on_click=change_phase,
-                args=(i,),
-                width="stretch",
-            )
+        if st.button("⌂  Project overview", key="nav-home", type="primary" if page == -1 else "tertiary", width="stretch"):
+            st.session_state.page = -1
+            st.rerun()
+        for phase_index, info in enumerate(PHASES):
+            st.markdown(f'<div class="micro" style="margin-top:14px">{phase_index + 1}. {info["title"]}</div>', unsafe_allow_html=True)
+            for method_index, method in enumerate(METHODS):
+                if method["phase"] != phase_index:
+                    continue
+                done = "✓" if st.session_state.notebooks[method_index].strip() else "○"
+                st.button(
+                    f"{method['code']} · {method['title']}  {done}",
+                    key=f"nav-method-{method_index}",
+                    type="primary" if method_index == page else "tertiary",
+                    on_click=change_page,
+                    args=(method_index,),
+                    width="stretch",
+                )
         st.divider()
         if st.button("📖 Book methods", type="tertiary", key="nav-library"):
             open_library = True
@@ -663,10 +587,67 @@ def render_phase_card(phase: int) -> bool:
     return open_library
 
 
-def render_notebook(phase: int) -> None:
-    page = PAGES[phase]
-    widget_key = f"w_nb_{phase}"
-    st.session_state[widget_key] = st.session_state.notebooks[phase]
+def render_overview() -> None:
+    st.markdown(
+        '<div class="eyebrow">Start here</div><h1 class="editorial-title">Make sense of the messy middle.</h1>'
+        '<p class="lede">UXmethod helps you move from an open question to grounded ideas. Capture what you know, learn from people, then make and compare possibilities without losing the thread.</p>',
+        unsafe_allow_html=True,
+    )
+    with st.container(key="card-overview"):
+        st.markdown('<p class="micro">Name your project</p>', unsafe_allow_html=True)
+        st.text_input(
+            "Project name",
+            key="project_name",
+            placeholder="e.g. A better way to find study spaces",
+            label_visibility="collapsed",
+        )
+        st.caption("This name is saved for this browser session and appears in the header.")
+    st.markdown('<div class="micro" style="margin-top:24px">Your three-part journey</div><h2 style="margin-top:4px">Choose where to begin</h2>', unsafe_allow_html=True)
+    cols = st.columns(3)
+    for index, (col, phase) in enumerate(zip(cols, PHASES)):
+        with col:
+            with st.container(key=f"overview-phase-{index}"):
+                st.markdown(
+                    f'<div class="phase-number">{index + 1}</div><p class="card-title">{phase["title"]}</p>'
+                    f'<p class="muted">{phase["subtitle"]}</p><p class="muted" style="margin-top:12px">{PHASE_DESCRIPTIONS[index]}</p>',
+                    unsafe_allow_html=True,
+                )
+                if st.button(f"Open {phase['title']}", key=f"overview-open-{index}", width="stretch"):
+                    change_phase(index)
+                    st.rerun()
+
+
+def render_idea_landscape() -> None:
+    ideas = idea_lines()
+    with st.container(key="card-landscape"):
+        st.markdown(
+            f'<p class="card-title">📊 Idea landscape <span class="pill ok" style="float:right">{len(ideas)} ideas</span></p>'
+            '<p class="card-help">Gemini places each idea on a visual map for quick review.</p>',
+            unsafe_allow_html=True,
+        )
+        if not ideas:
+            st.markdown('<div class="prompt-empty">Your ideas will appear here as you write them above, one per line.</div>', unsafe_allow_html=True)
+            return
+        analysis = analyze_ideas(ideas, full_project_context())
+        points = "".join(
+            f'<span class="idea-point" title="{html.escape(item["text"])}" style="left:{item["x"]}%;top:{item["y"]}%">{item["id"]}</span>'
+            for item in analysis
+        )
+        st.markdown(
+            f'<div class="idea-map"><span class="map-label">More exploratory</span>{points}<span class="map-axis">More actionable →</span></div>',
+            unsafe_allow_html=True,
+        )
+        for item in analysis:
+            st.markdown(
+                f'<div class="idea-row"><b>{item["id"]}</b><span><strong>{html.escape(item["dimension"])}</strong><br>{html.escape(item["text"])}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+
+def render_notebook(page_index: int) -> None:
+    page = METHODS[page_index]
+    widget_key = f"w_nb_{page_index}"
+    st.session_state[widget_key] = st.session_state.notebooks[page_index]
     with st.container(key="card-notebook"):
         st.markdown(
             f'<p class="card-title">💡 {page["notebook_title"]}</p><p class="card-help">{page["notebook_help"]}</p>',
@@ -675,15 +656,15 @@ def render_notebook(phase: int) -> None:
         st.text_area(
             page["notebook_title"],
             key=widget_key,
-            height=360,
-            placeholder="Write your own project idea, problem statement, user need, or opportunity here...",
+            height=120 if page["code"] == "9" else 360,
+            placeholder="Write your ideas here, one per line…" if page["code"] == "9" else "Write your notes here…",
             label_visibility="collapsed",
             on_change=sync_notebook,
-            args=(phase,),
+            args=(page_index,),
         )
         st.markdown(
             f'<div style="display:flex;justify-content:space-between;font-size:12px">'
-            f'<span style="color:#969892">{len(st.session_state.notebooks[phase])} characters</span>'
+            f'<span style="color:#969892">{len(st.session_state.notebooks[page_index])} characters</span>'
             f'<span style="color:#4d846f;font-weight:500">✨ AI coach is reading</span></div>',
             unsafe_allow_html=True,
         )
@@ -699,14 +680,14 @@ def render_prompt_bank() -> None:
         )
         if action.button("Generate for this project", key="gen-prompts", width="stretch"):
             with st.spinner("Generating custom prompts…"):
-                prompts, kind, message = generate_brainstorm_prompts(st.session_state.notebooks[2])
+                prompts, kind, message = generate_brainstorm_prompts(full_project_context())
             st.session_state.ai_prompts = prompts
             st.session_state.prompt_status = (kind, message)
 
         kind, message = st.session_state.prompt_status
         if message:
-            css = "status err" if kind == "fallback" and "error" in message.lower() else "status"
-            label = "Google AI Studio connected" if kind == "ai" else "Prototype fallback mode"
+            css = "status err" if kind == "error" else "status"
+            label = "Google AI Studio connected" if kind == "ai" else "Gemini unavailable"
             st.markdown(f'<div class="{css}">{label} · {html.escape(message)}</div>', unsafe_allow_html=True)
 
         prompts = st.session_state.ai_prompts
@@ -729,7 +710,7 @@ def render_prompt_bank() -> None:
             )
 
 
-def render_coach(phase: int) -> bool:
+def render_coach(phase: int, page_index: int) -> bool:
     page = PAGES[phase]
     open_library = False
     st.markdown(
@@ -739,7 +720,7 @@ def render_coach(phase: int) -> bool:
         unsafe_allow_html=True,
     )
 
-    has_text = bool(st.session_state.notebooks[phase].strip())
+    has_text = bool(st.session_state.notebooks[page_index].strip())
     if st.button(
         "✨ Review with AI coach",
         key=f"review-{phase}",
@@ -750,9 +731,13 @@ def render_coach(phase: int) -> bool:
     ):
         with st.spinner("The coach is reading your notebook…"):
             try:
-                st.session_state.suggestions[phase] = generate_coach_suggestions(
-                    phase, st.session_state.notebooks[phase]
+                suggestions = generate_coach_suggestions(
+                    phase, st.session_state.notebooks[page_index], PHASES, PAGES
                 )
+                for suggestion in suggestions:
+                    st.session_state.next_id += 1
+                    suggestion["id"] = st.session_state.next_id
+                st.session_state.suggestions[phase] = suggestions
                 st.session_state.accepted[phase] = set()
                 st.session_state.coach_status[phase] = ("ai", f"Suggestions generated by {st.session_state.last_model} from your notebook.")
             except Exception as error:  # noqa: BLE001
@@ -776,7 +761,7 @@ def render_coach(phase: int) -> bool:
 
     suggestions = st.session_state.suggestions[phase]
     accepted = st.session_state.accepted[phase]
-    notes = st.session_state.notes[phase]
+    notes = st.session_state.notes[page_index]
     for rank, s in enumerate(suggestions, 1):
         with st.container(key=f"sug-{s['type']}-{s['id']}-{s['importance']}"):
             top, close = st.columns([6, 1])
@@ -804,14 +789,14 @@ def render_coach(phase: int) -> bool:
                 st.markdown('<div class="applied">✓ Applied</div>', unsafe_allow_html=True)
             elif s["type"] == "consider":
                 if st.button(f"＋ {s['action']}", key=f"act-{s['id']}", type="tertiary"):
-                    comment_dialog(phase, s["id"])
+                    comment_dialog(page_index, s["id"])
             else:
                 st.button(
                     f"＋ {s['action']}",
                     key=f"act-{s['id']}",
                     type="tertiary",
                     on_click=accept_suggestion,
-                    args=(phase, s),
+                    args=(page_index, s),
                 )
 
     if not suggestions:
@@ -850,26 +835,36 @@ def main() -> None:
     init_state()
     st.markdown(CSS, unsafe_allow_html=True)
 
-    phase = st.session_state.phase
-    page = PAGES[phase]
-
-    open_library = render_sidebar(phase)
+    page_index = st.session_state.page
+    open_library = render_sidebar(page_index)
     render_header()
 
-    main_col, coach_col = st.columns([1.9, 1], gap="large")
-    with main_col:
-        st.markdown(
-            f'<div class="eyebrow">{page["eyebrow"]}</div>'
-            f'<h1 class="editorial-title">{page["title"]}</h1>'
-            f'<p class="lede">{page["description"]}</p>',
-            unsafe_allow_html=True,
-        )
-        open_library |= render_phase_card(phase)
-        render_notebook(phase)
-        if phase == 2:
-            render_prompt_bank()
-    with coach_col:
-        open_library |= render_coach(phase)
+    if page_index == -1:
+        render_overview()
+    else:
+        method = METHODS[page_index]
+        phase = method["phase"]
+        main_col, coach_col = st.columns([1.9, 1], gap="large")
+        with main_col:
+            st.markdown(
+                f'<div class="eyebrow">{PHASES[phase]["title"]} · Method {method["code"]}</div>'
+                f'<h1 class="editorial-title">{method["title"]}</h1>'
+                f'<p class="lede">{method["description"]}</p>',
+                unsafe_allow_html=True,
+            )
+            render_notebook(page_index)
+            if method["code"] == "9":
+                prompt_col, context_col = st.columns([3, 1.4])
+                with prompt_col:
+                    render_prompt_bank()
+                with context_col:
+                    st.markdown(
+                        '<div class="prompt-empty"><b>Context-aware coach</b><br>Gemini reads notes from every method, not just this page.</div>',
+                        unsafe_allow_html=True,
+                    )
+                render_idea_landscape()
+        with coach_col:
+            open_library |= render_coach(phase, page_index)
 
     if open_library:
         library_dialog()
