@@ -214,6 +214,7 @@ def init_state() -> None:
     ss.setdefault("page", -1)
     ss.setdefault("project_name", "")
     ss.setdefault("project_name_input", ss.project_name)
+    ss.setdefault("last_model", MODEL)
     if len(ss.get("notebooks", [])) != len(METHODS):
         legacy = ss.get("notebooks", ["", "", ""])
         ss.notebooks = [
