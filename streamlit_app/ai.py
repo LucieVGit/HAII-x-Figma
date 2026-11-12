@@ -5,12 +5,17 @@ from __future__ import annotations
 import json
 import os
 import re
+from pathlib import Path
 
 import streamlit as st
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
 
 
 def get_api_key() -> str | None:
-    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
+    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "VITE_GEMINI_API_KEY", "VITE_GOOGLE_API_KEY"):
         value = os.getenv(name)
         if value and value.strip() and value.strip() != "your-api-key-here":
             return value.strip()
@@ -21,7 +26,7 @@ def get_api_key() -> str | None:
 
 
 API_KEY = get_api_key()
-MODEL = os.getenv("GEMINI_MODEL") or "gemini-3.8-flash"
+MODEL = os.getenv("GEMINI_MODEL") or os.getenv("VITE_GEMINI_MODEL") or "gemini-3.8-flash"
 BACKUP_MODELS = [
     model for model in ("gemini-3.7-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite") if model != MODEL
 ]

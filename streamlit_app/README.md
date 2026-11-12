@@ -19,9 +19,10 @@ py -m venv .venv
 .venv\Scripts\activate.bat
 python -m pip install -r requirements.txt
 ```
-Configure `GEMINI_API_KEY` or `GOOGLE_API_KEY` in Streamlit secrets. Do not put keys in frontend
-code, `.env` files committed to Git, or the repository. On Streamlit Community Cloud, add
-`GEMINI_API_KEY` in the app's **Secrets** settings.
+For local development, set `GEMINI_API_KEY` or `GOOGLE_API_KEY` in the ignored root `.env` file.
+For deployment, configure the same names in Streamlit secrets. Never put keys in frontend code,
+committed `.env` files, or the repository. On Streamlit Community Cloud, add `GEMINI_API_KEY` in
+the app's **Secrets** settings.
 
 The model can be changed with `GEMINI_MODEL`. It defaults to `gemini-3.8-flash`.
 
