@@ -1070,7 +1070,6 @@ function App() {
                     aria-label="Project idea"
                   />
                   <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-[#969892]">{projectText.length} characters</span>
                     <span className="flex items-center gap-1.5 text-xs font-medium text-[#4d846f]">
                       <Sparkles size={13} />
                       AI coach is reading

@@ -39,7 +39,7 @@ communicates with Streamlit, and Streamlit calls Gemini.
 
 ### Windows
 
-```powershell
+```bash
 cd streamlit_app
 py -m venv .venv
 .venv\Scripts\activate.bat

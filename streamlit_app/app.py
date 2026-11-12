@@ -100,7 +100,7 @@ METHODS = [
     {"phase": 1, "code": "6", "title": "Observation", "description": "Study what people actually do in context, including workarounds and environmental cues.", "notebook_title": "Observation log", "notebook_help": "Record behavior, place, time, triggers, obstacles, and your interpretation separately."},
     {"phase": 1, "code": "7", "title": "Exploratory survey", "description": "Collect broader self-reported patterns to complement qualitative exploration.", "notebook_title": "Survey plan and findings", "notebook_help": "Draft objectives and questions, then record response patterns and limitations."},
     {"phase": 1, "code": "8", "title": "Cultural probes", "description": "Invite participants to document and express parts of their everyday experience.", "notebook_title": "Cultural probe plan", "notebook_help": "Describe activities, materials, participant instructions, returns, and inspirations."},
-    {"phase": 2, "code": "9", "title": "Brainstorming", "description": "Generate many varied ideas, defer judgment, and build on the thinking of others.", "notebook_title": "Brainstorming: your idea space", "notebook_help": "Generate broadly before filtering. Keep user evidence visible as you work."},
+    {"phase": 2, "code": "9", "title": "Brainstorming", "description": "Generate as many ideas as possible, including wild ones — focus on quantity, not quality. <br/><span class=\"text-blue\">“To get a good idea, get lots of ideas” ~Marc Rettig</span>", "notebook_title": "Brainstorming: your idea space", "notebook_help": ""},
     {"phase": 2, "code": "10", "title": "Ideation cards", "description": "Use structured prompts and design principles to provoke new solution directions.", "notebook_title": "Ideas from the cards", "notebook_help": "Record each prompt, the idea it triggered, and its link to user evidence."},
     {"phase": 2, "code": "11", "title": "Design studio", "description": "Sketch, share, critique, and combine ideas collaboratively around a shared brief.", "notebook_title": "Design studio workspace", "notebook_help": "Capture the brief, individual concepts, critique notes, and combined directions."},
     {"phase": 2, "code": "12", "title": "Experience maps", "description": "Synthesize the user journey to reveal pain points, emotions, and design opportunities.", "notebook_title": "Map the experience", "notebook_help": "List stages, actions, thoughts, emotions, evidence, pain points, and opportunities."},
@@ -231,6 +231,7 @@ def init_state() -> None:
     ss.setdefault("prompt_status", ("", ""))
     ss.setdefault("coach_status", [("", ""), ("", ""), ("", "")])
     ss.setdefault("next_id", 1000)
+    
 
 
 def change_phase(index: int) -> None:
@@ -371,6 +372,7 @@ CSS = """
 .pill.off { background: #f8e8ba; color: #936516; }
 
 /* Typography */
+.text-blue { color: #1e7f6c; }
 .eyebrow { display:flex; align-items:center; gap:8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: #4d846f; margin-bottom: 10px; }
 .eyebrow::before { content:""; width: 20px; height: 1px; background: #4d846f; }
 .editorial-title { font-family: 'DM Serif Display', serif !important; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1.08; letter-spacing: -0.025em; margin: 0; color: #252724; }
@@ -571,7 +573,7 @@ def render_phase_card(phase: int) -> bool:
         with st.container(key="card-scope"):
             head, link = st.columns([4, 1.3])
             head.markdown(
-                '<p class="card-title" style="color:#315f4d">✨ The scope of your AI brainstorming coach</p>'
+                '<p class="card-title" style="color:#315f4d">✨ The scope of your UXmethod AI assistant</p>'
                 '<p class="card-help">It supports the first three phases only: planning, exploration, and ideation.</p>',
                 unsafe_allow_html=True,
             )
@@ -612,8 +614,8 @@ def render_phase_card(phase: int) -> bool:
 
 def render_overview() -> None:
     st.markdown(
-        '<div class="eyebrow">Start here</div><h1 class="editorial-title">Make sense of the messy middle.</h1>'
-        '<p class="lede">UXmethod helps you move from an open question to grounded ideas. Capture what you know, learn from people, then make and compare possibilities without losing the thread.</p>',
+        '<div class="eyebrow">Start here</div><h1 class="editorial-title">Bring your project to life !</h1>'
+        '<p class="lede">UXmethod helps you move from an a timely project to a fast and easy human-AI collaborative work. Insert what you know, observe and collect informationsin the field and let the AI assistant help you analyze it.</p>',
         unsafe_allow_html=True,
     )
     with st.container(key="card-overview"):
@@ -625,7 +627,16 @@ def render_overview() -> None:
             label_visibility="collapsed",
             on_change=sync_project_name,
         )
-        st.caption("This name is saved for this browser session and appears in the header.")
+    with st.container(key="card-scope-overview"):
+        st.markdown(
+            '<p class="card-title" style="color:#315f4d">✨ The scope of your UXmethod AI assistant</p>'
+            '<p class="card-help">It supports the first three phases only: planning, exploration, and ideation.</p>'
+            '<p class="muted">The complete book process also includes generation and evaluation. These last two phases are not included in this project.</p>',
+            unsafe_allow_html=True,
+        )
+        if SCOPE_IMG.exists():
+            st.image(str(SCOPE_IMG), width="stretch")
+
     st.markdown('<div class="micro" style="margin-top:24px">Your three-part journey</div><h2 style="margin-top:4px">Choose where to begin</h2>', unsafe_allow_html=True)
     cols = st.columns(3)
     for index, (col, phase) in enumerate(zip(cols, PHASES)):
@@ -684,7 +695,7 @@ def render_notebook(page_index: int) -> None:
                 label_visibility="collapsed",
                 on_change=submit_brainstorming_idea,
             )
-            st.caption("Press Enter after each idea. It will be saved below and the input will clear.")
+        
         else:
             st.session_state[widget_key] = st.session_state.notebooks[page_index]
             st.text_area(
@@ -698,7 +709,6 @@ def render_notebook(page_index: int) -> None:
             )
         st.markdown(
             f'<div style="display:flex;justify-content:space-between;font-size:12px">'
-            f'<span style="color:#969892">{len(st.session_state.notebooks[page_index])} characters</span>'
             f'<span style="color:#4d846f;font-weight:500">✨ AI coach is reading</span></div>',
             unsafe_allow_html=True,
         )
