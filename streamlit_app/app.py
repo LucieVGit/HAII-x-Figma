@@ -303,7 +303,7 @@ def idea_lines() -> list[str]:
     return [
         re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip()
         for line in st.session_state.notebooks[9].splitlines()
-        if line.strip()
+        if line.strip() and not line.strip().startswith("Brainstorming prompt:")
     ]
 
 
@@ -712,6 +712,25 @@ def render_notebook(page_index: int) -> None:
             f'<span style="color:#4d846f;font-weight:500">✨ AI coach is reading</span></div>',
             unsafe_allow_html=True,
         )
+        if page["code"] == "9":
+            ideas = idea_lines()
+            st.markdown(
+                '<div style="margin-top:20px;padding-top:16px;border-top:1px solid #deded8">'
+                '<p class="card-title">💡 Your ideas</p>'
+                '<p class="card-help">A clear list of the ideas you wrote, separate from AI prompts.</p>',
+                unsafe_allow_html=True,
+            )
+            if ideas:
+                items = "".join(f"<li>{html.escape(idea)}</li>" for idea in ideas)
+                st.markdown(
+                    f'<ul style="margin:0;padding-left:22px;color:#4e534d;line-height:1.6">{items}</ul>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    '<div class="prompt-empty">Your ideas will appear here as you write them above, one per line.</div>',
+                    unsafe_allow_html=True,
+                )
 
 
 def render_prompt_bank() -> None:

@@ -511,7 +511,8 @@ function App() {
       projectText
         .split(/\n+/)
         .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
-        .filter(Boolean),
+        .filter(Boolean)
+        .filter((idea) => !idea.startsWith("Brainstorming prompt:")),
     [projectText],
   );
 
@@ -1079,6 +1080,31 @@ function App() {
 
                 {page.code === "9" && (
                   <>
+                    <div className="paper-card mb-6">
+                      <div className="mb-4 flex items-center gap-3">
+                        <div className="flex size-9 items-center justify-center rounded-lg bg-[#e3ebe6] text-[#42735f]">
+                          <Lightbulb size={17} />
+                        </div>
+                        <div>
+                          <h2 className="text-sm font-semibold">Your ideas</h2>
+                          <p className="text-xs text-[#7b7e77]">
+                            A clear list of the ideas you wrote, separate from AI prompts.
+                          </p>
+                        </div>
+                      </div>
+                      {brainstormingIdeas.length > 0 ? (
+                        <ul className="list-disc space-y-2 pl-5 text-sm leading-5 text-[#4e534d]">
+                          {brainstormingIdeas.map((idea, index) => (
+                            <li key={`${idea}-${index}`}>{idea}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="rounded-xl border border-dashed border-[#cfd8d1] bg-[#f8fbf8] p-4 text-sm text-[#68736c]">
+                          Your ideas will appear here as you write them above, one per line.
+                        </p>
+                      )}
+                    </div>
+
                     <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_250px]">
                       <div className="paper-card bg-[#fffdf7]">
                         <div className="mb-4 flex items-center gap-3">
